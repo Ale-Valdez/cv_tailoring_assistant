@@ -1,0 +1,30 @@
+# Recarga al cambiar el código. Hace falta `pnpm install` en el host: el repo se monta encima de la imagen.
+services:
+  db:
+    ports:
+      - "${DB_PORT:-5432}:5432"
+
+  api:
+    command: ["node", "--watch", "--env-file=/app/.env", "src/index.ts"]
+    volumes:
+      - .:/app
+      - files:/data/files
+    ports:
+      - "${API_PORT:-3001}:3001"
+
+  renderer:
+    command: ["node", "--watch", "src/index.ts"]
+    volumes:
+      - .:/app
+    ports:
+      - "${RENDERER_PORT:-3002}:3002"
+
+  web:
+    build:
+      target: dev
+    volumes:
+      - .:/app
+    environment:
+      API_INTERNAL_URL: http://api:3001
+    ports:
+      - "${WEB_PORT:-3000}:3000"

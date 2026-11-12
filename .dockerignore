@@ -1,0 +1,11 @@
+.git
+.cursor
+node_modules
+**/node_modules
+**/.next
+**/dist
+**/coverage
+*.log
+.env
+.env.local
+.env.*.local

@@ -1,0 +1,31 @@
+---
+description: Contexto y reglas del proyecto CV Tailor (arquitectura hexagonal, monorepo, decisiones)
+alwaysApply: true
+---
+
+# CV Tailor
+
+- Al empezar una sesión, leer `docs/README.md` (estado actual e índice) y `docs/decisions/pendientes.md`.
+- No implementar algo que dependa de una decisión pendiente sin confirmarla con el usuario. Al resolverla, crear un ADR en `docs/decisions/`, actualizar `pendientes.md` y la sección "Estado actual" de `docs/README.md`.
+- Mantener la documentación sincronizada con el código en el mismo cambio.
+
+## Arquitectura (ver `docs/02-arquitectura.md`)
+
+- Monorepo TypeScript: `apps/api` (Express), `apps/web` (Next.js solo UI), `apps/renderer` (Playwright), y `packages/` (domain, application, contracts, adapter-*).
+- Arquitectura hexagonal. La dependencia apunta hacia adentro:
+  - `domain` no depende de nada del monorepo.
+  - `application` depende solo de `domain` y define los puertos.
+  - `adapter-*` implementan puertos, dependen de `application` y `domain`, y nunca de otro adaptador.
+  - `apps/api` es la raíz de composición (inyección manual de dependencias).
+  - `apps/web` depende solo de `contracts`.
+- Dominio y aplicación no importan Express, Prisma, LangChain, LangGraph ni Playwright.
+- Puertos solo donde hay una dependencia externa real.
+- LangChain y LangGraph viven solo en `adapter-ai`. Los grafos no tienen estado persistente. La revisión humana de sugerencias es un caso de uso de la aplicación (ADR-015). Los límites de dependencias se verifican en CI (ADR-016). `renderer` es un servicio aparte (ADR-014).
+- LangSmith se configura solo con variables de entorno, sin código propio.
+- Proveedor de LLM: OpenAI, siempre construido por la `ModelFactory` de `adapter-ai` según `LLM_PROVIDER` en el `.env`. Ningún otro código importa un proveedor concreto.
+- `web` llega a `api` solo por `rewrites` de Next.js (ADR-017): `api` no publica puertos al host ni usa CORS.
+- Persistencia: PostgreSQL con Prisma (servicio `db` de Compose). Gestor de paquetes: pnpm workspaces.
+
+## Regla de negocio central
+
+Nunca se inventa experiencia ni conocimientos. Toda sugerencia debe citar evidencia del perfil maestro y pasar el fabrication guard (servicio de dominio determinista, sin LLM).

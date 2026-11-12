@@ -1,0 +1,23 @@
+---
+description: Al terminar cada iteración, listar los archivos nuevos y modificados
+alwaysApply: true
+---
+
+# Resumen de archivos al cerrar cada iteración
+
+Una iteración es cada unidad de trabajo que termina con una respuesta final al usuario y en la que se crearon, modificaron, renombraron o eliminaron archivos del proyecto.
+
+Al terminar, y antes de cerrar la respuesta, incluir una sección final "Archivos de esta iteración" con este formato:
+
+- **Nuevos**: archivos creados, cada uno con enlace y una frase sobre su propósito.
+- **Modificados**: archivos existentes que se editaron, cada uno con enlace y una frase sobre qué cambió.
+- **Eliminados o renombrados**: solo si los hubo.
+
+Reglas:
+
+- Listar solo lo que se tocó en esa iteración, no el estado completo del repositorio.
+- Construir la lista a partir de los cambios realizados, y verificarla con `git status --short` y `git diff --stat` cuando haya un repositorio git. Si todavía no hay commits, `git status` muestra todo como no versionado y no distingue lo nuevo de lo modificado: en ese caso manda la lista de lo que se tocó en la iteración.
+- Agrupar archivos generados (por ejemplo `pnpm-lock.yaml`, `dist/`, migraciones autogeneradas) en una línea aparte indicando que son generados.
+- No listar `node_modules/`, caches ni archivos ignorados por git.
+- Si la iteración no cambió ningún archivo (solo consultas o análisis), omitir la sección.
+- Si se cambió código o configuración, indicar también si se actualizó la documentación en `docs/` (o por qué no hizo falta).

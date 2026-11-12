@@ -1,0 +1,15 @@
+# 04 - Riesgos técnicos
+
+- **Alucinación del LLM.** Es el riesgo central. Mitigación: salida estructurada con esquema (Zod), cada sugerencia obligada a citar IDs de evidencia del perfil, y un validador determinista de dominio (fabrication guard, ADR-018) que rechaza términos nuevos (skills, empresas, cifras, fechas) ausentes del perfil o de una habilidad declarada por el usuario.
+- **Extracción de PDF.** Columnas, tablas, íconos o PDFs escaneados rompen el orden del texto. Mitigación: extracción de texto más estructuración por LLM, pantalla de corrección obligatoria y aviso si el PDF no tiene capa de texto.
+- **Privacidad.** El CV contiene datos personales y viaja al proveedor del LLM. Con LangSmith activado, las trazas también guardan entradas y salidas en ese servicio. Mitigación (ADR-019): no enviar datos de contacto al LLM (se reinsertan al renderizar), avisar la primera vez que el CV sale hacia el proveedor, y LangSmith se apaga con `LANGSMITH_TRACING=false` (documentado en `.env.example`). No se agrega enmascarado ni lógica propia de trazado.
+- **Calidad del matching.** Los sinónimos (por ejemplo "Postgres" y "PostgreSQL") generan falsos negativos. Mitigación: normalización más diccionario de alias, y LLM solo para los casos ambiguos.
+- **Fidelidad HTML a PDF.** Saltos de página y fuentes. Mitigación: CSS de impresión, fuentes incluidas en la imagen Docker (render reproducible entre máquinas) y pruebas de snapshot del PDF.
+- **Chromium en contenedor.** Es pesado y necesita dependencias del sistema. Mitigación: imagen oficial de Playwright aislada en su propio servicio.
+- **Costo y latencia.** Varias llamadas por oferta. Mitigación: llamadas acotadas, caché por hash de oferta y de perfil, y límite de reintentos del guard.
+- **Complejidad de LangChain/LangGraph.** Las APIs cambian rápido. Mitigación: fijar versiones y confinarlas al adaptador de IA, de modo que el dominio y la aplicación no las conozcan.
+- **Erosión de la arquitectura hexagonal.** Con el tiempo se cuela una importación de Prisma o LangChain en el núcleo. Mitigación: reglas de dependencias verificadas automáticamente en CI (ADR-016).
+- **Sobreingeniería.** La hexagonal añade capas y código de mapeo. Mitigación: puertos solo donde hay una dependencia externa real (LLM, base de datos, PDF, renderer), sin interfaces por costumbre.
+- **Next.js solo como UI con una API aparte.** Dos servidores y problemas de CORS. Mitigación: proxy con `rewrites` de Next.js hacia la API (ADR-017). Vigilar el límite de tamaño del cuerpo al subir PDFs a través del proxy.
+- **Ofertas en otro idioma que el CV.** Se decide con D14.
+- **Edición del HTML.** Un editor WYSIWYG libre puede romper el formato. Mitigación: editar datos estructurados con formularios y renderizar el HTML a partir de ellos.

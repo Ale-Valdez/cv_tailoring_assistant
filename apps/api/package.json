@@ -1,0 +1,27 @@
+{
+  "name": "@cv-tailor/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --env-file=../../.env src/index.ts",
+    "start": "node --env-file=../../.env src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cv-tailor/adapter-ai": "workspace:*",
+    "@cv-tailor/adapter-cv-template": "workspace:*",
+    "@cv-tailor/adapter-pdf-reader": "workspace:*",
+    "@cv-tailor/adapter-pdf-renderer": "workspace:*",
+    "@cv-tailor/adapter-persistence": "workspace:*",
+    "@cv-tailor/application": "workspace:*",
+    "@cv-tailor/contracts": "workspace:*",
+    "express": "^5.3.0",
+    "pino": "^10.4.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}

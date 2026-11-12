@@ -1,0 +1,19 @@
+{
+  "name": "@cv-tailor/adapter-cv-template",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cv-tailor/application": "workspace:*",
+    "@cv-tailor/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "catalog:"
+  }
+}
