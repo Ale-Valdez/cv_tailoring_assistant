@@ -5,12 +5,14 @@ import { logger } from "./logger.ts";
 
 try {
   const runtime = readRuntimeConfig(process.env);
+  const services = compose({
+    model: runtime.model,
+    langsmithTracing: runtime.langsmithTracing,
+  });
   const port = readPort(process.env.PORT);
   const host = "0.0.0.0";
 
-  compose();
-
-  createServer().listen(port, host, () => {
+  createServer(services).listen(port, host, () => {
     logger.info({ port, host, langsmithTracing: runtime.langsmithTracing }, "api listening");
   });
 } catch (error) {

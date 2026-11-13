@@ -9,7 +9,7 @@ Con el tiempo es fácil que el núcleo importe, por conveniencia, Express, Prism
 ## Decisión
 Se usa `dependency-cruiser`. Al implementar la Fase 0 se confirmó esta herramienta; la alternativa evaluada fue `eslint-plugin-boundaries`.
 
-La configuración está en `.dependency-cruiser.cjs`. El parser es `swc` (`@swc/core`): dependency-cruiser 18 todavía no lee TypeScript 7, y `swc` sí ve los `import` y los `import type`. `pnpm-workspace.yaml` permite el postinstall de `@swc/core` (`allowBuilds`). `pnpm boundaries` (`scripts/boundaries.mjs`) y el CI (`.github/workflows/ci.yml`, que también ejecuta `pnpm typecheck`) fallan si hay una violación o si el parser no pudo leer TypeScript.
+La configuración está en `.dependency-cruiser.cjs`. El parser es `swc` (`@swc/core`): dependency-cruiser 18 todavía no lee TypeScript 7, y `swc` sí ve los `import` y los `import type`. `pnpm-workspace.yaml` permite el postinstall de `@swc/core` y de Prisma (`allowBuilds`). `pnpm boundaries` (`scripts/boundaries.mjs`) y el CI (`.github/workflows/ci.yml`, que también ejecuta `pnpm typecheck` y `pnpm test`) fallan si hay una violación o si el parser no pudo leer TypeScript. Los `*.test.ts` y `vitest.config.ts` quedan fuera del análisis: importan Vitest, que no es una dependencia de producción.
 
 - `domain` no importa nada del monorepo ni librerías externas, salvo Zod.
 - `application` solo importa `domain`.

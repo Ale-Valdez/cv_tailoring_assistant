@@ -17,5 +17,9 @@ Se usa la opción A:
 ## Consecuencias
 - Para el navegador todo es el mismo origen: sin CORS, y una futura autenticación con cookies funciona sin configuración extra.
 - El tráfico pasa por Next.js (un salto extra) y si `web` cae, `api` no es alcanzable desde el navegador.
-- La subida del PDF atraviesa el proxy: hay que revisar y configurar los límites de tamaño del cuerpo de la petición en Next.js al implementar la importación de perfil (Fase 1), y fijar un límite de tamaño de archivo también en `api`.
+- La subida del PDF atraviesa el proxy: el cuerpo queda limitado a 10 MiB en Next.js y en `api` (ver la actualización).
 - Las descargas del PDF exportado también pasan por el proxy; verificar el manejo de respuestas binarias al implementar `ExportTailoredCv`.
+
+## Actualización (2026-11-13)
+
+`experimental.proxyClientMaxBodySize` en `apps/web` está en 10 MiB (`10 * 1024 * 1024` bytes). El default del proxy es 10 MB decimales, menor que ese tope, y un PDF válido podía caer antes de llegar a `api`. `POST /profiles/import` usa `express.raw` con el mismo `MAX_PDF_BYTES`. `POST /profiles/confirm` acepta JSON de hasta 1 MB.

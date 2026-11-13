@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@cv-tailor/domain": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

@@ -6,9 +6,11 @@
     "node": ">=24.19.0 <25"
   },
   "scripts": {
-    "typecheck": "pnpm -r --if-present typecheck",
-    "boundaries": "node scripts/boundaries.mjs",
-    "check": "pnpm typecheck && pnpm boundaries",
+    "typecheck": "pnpm --filter @cv-tailor/adapter-persistence generate && pnpm -r --if-present typecheck",
+    "boundaries": "pnpm --filter @cv-tailor/adapter-persistence generate && node scripts/boundaries.mjs",
+    "db:migrate": "node scripts/prisma.mjs migrate deploy",
+    "test": "pnpm -r --if-present test",
+    "check": "pnpm typecheck && pnpm test && pnpm boundaries",
     "dev": "pnpm --parallel --filter @cv-tailor/api --filter @cv-tailor/web --filter @cv-tailor/renderer dev",
     "compose": "docker compose up --build",
     "compose:dev": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build"

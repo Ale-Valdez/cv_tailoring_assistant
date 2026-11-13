@@ -9,7 +9,11 @@ const nextConfig: NextConfig = {
   agentRules: false,
   output: "standalone",
   outputFileTracingRoot: monorepoRoot,
-  transpilePackages: ["@cv-tailor/contracts"],
+  // 10 MiB, el mismo tope que MAX_PDF_BYTES (ADR-020). El default del proxy es 10 MB decimales.
+  experimental: {
+    proxyClientMaxBodySize: 10 * 1024 * 1024,
+  },
+  transpilePackages: ["@cv-tailor/contracts", "@cv-tailor/domain"],
   async rewrites() {
     return [
       {

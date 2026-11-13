@@ -3,9 +3,13 @@ packages:
   - packages/*
 
 allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
   '@swc/core': true
+  prisma: true
 
 catalog:
   typescript: ^7.0.2
   zod: ^4.6.7
+  vitest: ^5.1.0
   "@types/node": ^24.19.2

@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// El agregado del perfil se guarda entero. El dominio lo valida al leer y al escribir (ADR-013).
+model ProfileRecord {
+  id        String   @id
+  updatedAt DateTime
+  document  Json
+
+  @@index([updatedAt])
+  @@map("Profile")
+}
+
+// La oferta analizada se guarda entera. El dominio la valida al leer y al escribir (ADR-013, ADR-021).
+model JobPostingRecord {
+  id          String   @id
+  contentHash String   @unique
+  updatedAt   DateTime
+  document    Json
+
+  @@index([updatedAt])
+  @@map("JobPosting")
+}
+
+// La propuesta de adaptación se guarda entera. El dominio la valida al leer y al escribir (ADR-013, ADR-015).
+model TailoredCvRecord {
+  id           String   @id
+  profileId    String
+  jobPostingId String
+  updatedAt    DateTime
+  document     Json
+
+  @@unique([profileId, jobPostingId])
+  @@index([updatedAt])
+  @@map("TailoredCV")
+}

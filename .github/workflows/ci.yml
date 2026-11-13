@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   check:
-    name: typecheck y límites
+    name: typecheck, tests y límites
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,5 +22,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Comprobar tipos
         run: pnpm typecheck
+      - name: Ejecutar pruebas
+        run: pnpm test
       - name: Comprobar límites hexagonales
         run: pnpm boundaries

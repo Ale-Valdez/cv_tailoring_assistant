@@ -16,3 +16,9 @@ El CV viaja a un proveedor en la nube (ADR-002, ADR-011). Con LangSmith activado
 - El adaptador de IA recibe el perfil sin el bloque de contacto. La plantilla lo vuelve a poner al armar el HTML.
 - No hay primera llamada al proveedor sin ese aviso.
 - Apagar LangSmith no requiere cambios de código. Con el trazado activo, lo que sí se envió al modelo queda guardado en LangSmith.
+
+## Actualización (2026-11-13)
+
+`ImportProfileFromPdf` (ADR-020) quita emails y teléfonos del texto antes de llamar al extractor, y deja vacío el bloque de contacto del perfil importado. El nombre, la ubicación y las URLs pueden seguir en ese texto: el PDF no separa el contacto del resto, y una URL puede ser la de un proyecto.
+
+La pantalla de importación muestra el aviso antes de la primera subida. `GET /privacy` indica si LangSmith está activo, porque el navegador no ve esa variable. La aceptación queda en `localStorage` con la clave `cv-tailor.llm-consent`.

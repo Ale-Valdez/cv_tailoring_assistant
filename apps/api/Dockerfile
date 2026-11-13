@@ -23,6 +23,8 @@ COPY tsconfig.base.json ./
 COPY apps/api apps/api
 COPY packages packages
 
+RUN pnpm --filter @cv-tailor/adapter-persistence generate
+
 WORKDIR /app/apps/api
 
 ENV PORT=3001

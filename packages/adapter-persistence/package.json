@@ -7,13 +7,18 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "generate": "DATABASE_URL=postgresql://cv_tailor:cv_tailor@127.0.0.1:5432/cv_tailor prisma generate",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@cv-tailor/application": "workspace:*",
-    "@cv-tailor/domain": "workspace:*"
+    "@cv-tailor/domain": "workspace:*",
+    "@prisma/client": "^6.19.3"
   },
   "devDependencies": {
-    "typescript": "catalog:"
+    "prisma": "^6.19.3",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

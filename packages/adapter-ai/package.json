@@ -7,13 +7,19 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@cv-tailor/application": "workspace:*",
-    "@cv-tailor/domain": "workspace:*"
+    "@cv-tailor/domain": "workspace:*",
+    "@langchain/core": "^1.4.0",
+    "@langchain/langgraph": "^1.7.3",
+    "@langchain/openai": "^1.8.4",
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

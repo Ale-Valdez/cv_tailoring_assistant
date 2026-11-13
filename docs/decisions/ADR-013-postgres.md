@@ -17,3 +17,7 @@ La propuesta original era SQLite en un volumen para el MVP, con Postgres como mi
 - Un servicio más en Compose, pero sin migración futura desde SQLite.
 - Los campos semiestructurados (por ejemplo el snapshot del contenido del CV) pueden usar `jsonb`.
 - Al no haber checkpointer de LangGraph (ADR-006, ADR-015), Postgres solo guarda el estado de dominio.
+
+## Actualización (2026-11-13)
+
+El perfil confirmado es una fila en `Profile`: `id`, `updatedAt` y `document` (`jsonb` con el agregado). La oferta analizada es una fila en `JobPosting`: `id`, `contentHash` (único), `updatedAt` y `document`. El dominio valida esos documentos al guardarlos y al leerlos. `pnpm db:migrate` aplica las migraciones; `api` no las corre al arrancar. `FileStorage` sigue sin implementarse.

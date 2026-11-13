@@ -1,4 +1,5 @@
 node_modules/
+packages/adapter-persistence/src/generated/
 dist/
 .next/
 out/

@@ -1,5 +1,3 @@
-// Fija la dependencia hacia el núcleo. La implementación llega en fases posteriores.
-import "@cv-tailor/application";
-import "@cv-tailor/domain";
-
-export {};
+export { createPrismaJobPostingRepository } from "./prisma-job-posting-repository.ts";
+export { createPrismaProfileRepository } from "./prisma-profile-repository.ts";
+export { createPrismaTailoredCvRepository } from "./prisma-tailored-cv-repository.ts";

@@ -124,7 +124,8 @@ module.exports = {
       path: "node_modules",
     },
     exclude: {
-      path: "(^|/)\\.next/|\\.css$",
+      // Los tests importan Vitest. No es dependencia de producción (ADR-016).
+      path: "(^|/)\\.next/|\\.css$|\\.test\\.ts$|(^|/)vitest\\.config\\.ts$",
     },
     // dependency-cruiser 18 no acepta TypeScript 7. swc lee los .ts y también los import type.
     parser: "swc",

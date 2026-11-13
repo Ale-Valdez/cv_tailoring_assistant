@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node --watch --env-file=../../.env src/index.ts",
     "start": "node --env-file=../../.env src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@cv-tailor/adapter-ai": "workspace:*",
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

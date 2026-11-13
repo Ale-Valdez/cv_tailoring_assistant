@@ -21,3 +21,7 @@ ADR-002 fijó un LLM en la nube con proveedor intercambiable, dejando pendiente 
 - Hay dos niveles de aislamiento: los puertos hexagonales (`ProfileExtractor`, `JobAnalyzer`, `TailoringProposer`) ocultan la IA al núcleo, y la fábrica oculta el proveedor al resto del adaptador.
 - Los modelos de distintos proveedores soportan salida estructurada con matices distintos; al cambiar de proveedor hay que validar los prompts y esquemas.
 - El nombre exacto del modelo queda para la implementación.
+
+## Actualización (2026-11-13)
+
+El valor de ejemplo de `LLM_MODEL` es `gpt-6-luna`, en `.env.example`. La fábrica sigue leyendo esa variable: otro identificador de OpenAI no cambia los grafos. `extractProfileGraph` valida la salida y reintenta hasta 3 veces. `gpt-6-luna` rechaza cualquier `temperature` distinta del valor por defecto, así que el ejemplo deja `LLM_TEMPERATURE` vacío y la fábrica no envía el parámetro. Otros identificadores pueden fijarlo.

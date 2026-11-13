@@ -7,13 +7,17 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@cv-tailor/application": "workspace:*",
-    "@cv-tailor/domain": "workspace:*"
+    "@cv-tailor/domain": "workspace:*",
+    "unpdf": "^2.1.0"
   },
   "devDependencies": {
-    "typescript": "catalog:"
+    "pdf-lib": "^1.17.1",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }
