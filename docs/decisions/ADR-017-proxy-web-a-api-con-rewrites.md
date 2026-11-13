@@ -18,7 +18,7 @@ Se usa la opción A:
 - Para el navegador todo es el mismo origen: sin CORS, y una futura autenticación con cookies funciona sin configuración extra.
 - El tráfico pasa por Next.js (un salto extra) y si `web` cae, `api` no es alcanzable desde el navegador.
 - La subida del PDF atraviesa el proxy: el cuerpo queda limitado a 10 MiB en Next.js y en `api` (ver la actualización).
-- Las descargas del PDF exportado también pasan por el proxy; verificar el manejo de respuestas binarias al implementar `ExportTailoredCv`.
+- Las descargas del PDF exportado también pasan por el proxy. `GET /jobs/:id/proposal/exports/:exportId` llega al navegador como `application/pdf`, con `Content-Disposition`, sin alterar los bytes.
 
 ## Actualización (2026-11-13)
 

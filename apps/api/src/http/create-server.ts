@@ -7,7 +7,14 @@ import type { AppServices } from "../compose.ts";
 import { writeHttpError } from "./http-error.ts";
 import { analyzeJob, loadCurrentJob, loadJob, matchJob } from "./jobs.ts";
 import { confirmProfile, importProfile, loadProfile } from "./profiles.ts";
-import { generateProposal, loadProposal, reviewProposalSuggestion } from "./proposals.ts";
+import {
+  downloadProposalExport,
+  exportProposal,
+  generateProposal,
+  loadProposal,
+  previewProposal,
+  reviewProposalSuggestion,
+} from "./proposals.ts";
 
 export function createServer(services: AppServices): Express {
   const app = express();
@@ -41,6 +48,9 @@ export function createServer(services: AppServices): Express {
   app.get("/jobs/current", loadCurrentJob(services));
   app.get("/jobs/:id/match", matchJob(services));
   app.post("/jobs/:id/proposals", generateProposal(services));
+  app.get("/jobs/:id/proposal/preview", previewProposal(services));
+  app.post("/jobs/:id/proposal/export", exportProposal(services));
+  app.get("/jobs/:id/proposal/exports/:exportId", downloadProposalExport(services));
   app.get("/jobs/:id/proposal", loadProposal(services));
   app.get("/jobs/:id", loadJob(services));
   app.post(

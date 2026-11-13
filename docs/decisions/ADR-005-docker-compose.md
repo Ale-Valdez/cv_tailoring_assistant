@@ -11,5 +11,6 @@ Los servicios se gestionan con Docker Compose: `web`, `api`, `renderer` y `db` (
 
 ## Consecuencias
 - Un solo comando levanta todo (`docker compose up`).
+- `pnpm compose` suma `docker-compose.dev.yml`: el código del host queda montado y `web` corre `next dev`, sin un build de imagen por cada cambio de pantalla. `pnpm compose:prod` usa solo la imagen compilada.
 - Render de PDF reproducible entre máquinas.
 - `api` depende del `healthcheck` de `db` para arrancar.

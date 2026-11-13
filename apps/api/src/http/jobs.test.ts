@@ -60,6 +60,13 @@ function services(overrides: Partial<AppServices> = {}): AppServices {
       throw new ApplicationError("proposal_failed", "No se pudieron proponer cambios.");
     },
     loadTailoringProposal: async () => null,
+    previewTailoredCv: async () => "<html></html>",
+    exportTailoredCv: async () => {
+      throw new ApplicationError("export_not_ready", "Quedan sugerencias sin revisar.");
+    },
+    loadTailoredCvExport: async () => {
+      throw new ApplicationError("export_not_found", "No hay un PDF con esa versión.");
+    },
     reviewSuggestion: async () => {
       throw new ApplicationError("proposal_not_found", "No hay una propuesta con ese identificador.");
     },
@@ -224,6 +231,71 @@ describe("ofertas", () => {
       const missing = await fetch(`${url}/jobs/${posting.id}/proposal`);
       expect(missing.status).toBe(404);
       expect(await missing.json()).toMatchObject({ code: "proposal_not_found" });
+    });
+  });
+
+  it("devuelve el HTML de la vista previa y 404 si no hay propuesta", async () => {
+    await withServer(
+      createServer(
+        services({
+          previewTailoredCv: async () => "<!DOCTYPE html><h1>Ada Lovelace</h1>",
+        }),
+      ),
+      async (url) => {
+        const preview = await fetch(`${url}/jobs/${posting.id}/proposal/preview`);
+        expect(preview.status).toBe(200);
+        expect(preview.headers.get("content-type")).toContain("text/html");
+        expect(await preview.text()).toContain("Ada Lovelace");
+      },
+    );
+
+    await withServer(
+      createServer(
+        services({
+          previewTailoredCv: async () => {
+            throw new ApplicationError("proposal_not_found", "Todavía no hay una propuesta para esta oferta.");
+          },
+        }),
+      ),
+      async (url) => {
+        const missing = await fetch(`${url}/jobs/${posting.id}/proposal/preview`);
+        expect(missing.status).toBe(404);
+        expect(await missing.json()).toMatchObject({ code: "proposal_not_found" });
+      },
+    );
+  });
+
+  it("exporta el PDF y lo vuelve a descargar", async () => {
+    const bytes = Buffer.from("%PDF-1.4");
+    await withServer(
+      createServer(
+        services({
+          exportTailoredCv: async () =>
+            ({ id: "cv", exports: [{ id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", version: 1 }] }) as never,
+          loadTailoredCvExport: async () => ({ bytes, filename: "Ada Lovelace-v1.pdf" }),
+        }),
+      ),
+      async (url) => {
+        const created = await fetch(`${url}/jobs/${posting.id}/proposal/export`, { method: "POST" });
+        expect(created.status).toBe(200);
+        expect(await created.json()).toMatchObject({ exports: [{ version: 1 }] });
+
+        const file = await fetch(`${url}/jobs/${posting.id}/proposal/exports/cccccccc-cccc-4ccc-8ccc-cccccccccccc`);
+        expect(file.status).toBe(200);
+        expect(file.headers.get("content-type")).toContain("application/pdf");
+        expect(file.headers.get("content-disposition")).toContain("filename*=UTF-8''Ada%20Lovelace-v1.pdf");
+        expect(Buffer.from(await file.arrayBuffer())).toEqual(bytes);
+      },
+    );
+
+    await withServer(createServer(services()), async (url) => {
+      const blocked = await fetch(`${url}/jobs/${posting.id}/proposal/export`, { method: "POST" });
+      expect(blocked.status).toBe(422);
+      expect(await blocked.json()).toMatchObject({ code: "export_not_ready" });
+
+      const missing = await fetch(`${url}/jobs/${posting.id}/proposal/exports/cccccccc-cccc-4ccc-8ccc-cccccccccccc`);
+      expect(missing.status).toBe(404);
+      expect(await missing.json()).toMatchObject({ code: "export_not_found" });
     });
   });
 

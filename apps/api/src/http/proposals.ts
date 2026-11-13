@@ -32,6 +32,40 @@ export function loadProposal(services: AppServices) {
   };
 }
 
+export function exportProposal(services: AppServices) {
+  return async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    try {
+      response.json(await services.exportTailoredCv(pathParam(request.params.id)));
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+
+export function downloadProposalExport(services: AppServices) {
+  return async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    try {
+      const file = await services.loadTailoredCvExport(pathParam(request.params.id), pathParam(request.params.exportId));
+      response.setHeader("content-type", "application/pdf");
+      response.setHeader("content-disposition", contentDisposition(file.filename));
+      response.send(Buffer.from(file.bytes));
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+
+export function previewProposal(services: AppServices) {
+  return async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    try {
+      const html = await services.previewTailoredCv(pathParam(request.params.id));
+      response.type("html").send(html);
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+
 export function reviewProposalSuggestion(services: AppServices) {
   return async (request: Request, response: Response, next: NextFunction): Promise<void> => {
     try {
@@ -54,6 +88,11 @@ export function reviewProposalSuggestion(services: AppServices) {
       next(error);
     }
   };
+}
+
+function contentDisposition(filename: string): string {
+  const ascii = filename.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "");
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
 }
 
 function pathParam(value: string | string[] | undefined): string {

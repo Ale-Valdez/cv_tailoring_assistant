@@ -8,6 +8,8 @@ try {
   const services = compose({
     model: runtime.model,
     langsmithTracing: runtime.langsmithTracing,
+    filesDir: runtime.filesDir,
+    rendererUrl: runtime.rendererUrl,
   });
   const port = readPort(process.env.PORT);
   const host = "0.0.0.0";

@@ -74,6 +74,7 @@ export {
 } from "./profile/profile.ts";
 export { projectSchema, type Project } from "./profile/project.ts";
 export { skillEntrySchema, skillSourceSchema, type SkillEntry, type SkillSource } from "./profile/skill.ts";
+export { profileForRender } from "./tailoring/apply-suggestions.ts";
 export { cvExportSchema, parseCvExport, type CvExport } from "./tailoring/cv-export.ts";
 export { checkFabrication, type FabricationDraft } from "./tailoring/fabrication-guard.ts";
 export { matchResultSchema, matchStatusSchema, parseMatchResult, type MatchResult, type MatchStatus } from "./tailoring/match-result.ts";

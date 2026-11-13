@@ -15,6 +15,9 @@ export {
   type AnalyzeJobPostingDeps,
 } from "./analyze-job/analyze-job-posting.ts";
 export { loadJobPosting, loadLatestJobPosting, matchJobPosting } from "./analyze-job/match-job-posting.ts";
+export type { CvHtmlRenderer } from "./ports/cv-html-renderer.ts";
+export type { FileStorage } from "./ports/file-storage.ts";
+export { MAX_CV_HTML_BYTES, type PdfGenerator } from "./ports/pdf-generator.ts";
 export type { PdfTextReader } from "./ports/pdf-text-reader.ts";
 export type {
   ExtractedJobContent,
@@ -36,6 +39,13 @@ export {
   loadTailoringProposal,
   type GenerateTailoringProposalDeps,
 } from "./tailoring/generate-tailoring-proposal.ts";
+export {
+  exportTailoredCv,
+  loadTailoredCvExport,
+  type ExportTailoredCvDeps,
+  type TailoredCvPdf,
+} from "./tailoring/export-tailored-cv.ts";
+export { previewTailoredCv, type PreviewTailoredCvDeps } from "./tailoring/preview-tailored-cv.ts";
 export { reviewSuggestion, type ReviewSuggestionDeps } from "./tailoring/review-suggestion.ts";
 export type { ReviewDecision } from "@cv-tailor/domain";
 export type {

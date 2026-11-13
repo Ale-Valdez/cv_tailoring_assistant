@@ -12,8 +12,9 @@
     "test": "pnpm -r --if-present test",
     "check": "pnpm typecheck && pnpm test && pnpm boundaries",
     "dev": "pnpm --parallel --filter @cv-tailor/api --filter @cv-tailor/web --filter @cv-tailor/renderer dev",
-    "compose": "docker compose up --build",
-    "compose:dev": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build"
+    "compose": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build",
+    "compose:dev": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build",
+    "compose:prod": "docker compose up --build"
   },
   "devDependencies": {
     "@swc/core": "^1.16.22",

@@ -47,6 +47,13 @@ function services(overrides: Partial<AppServices> = {}): AppServices {
       throw new ApplicationError("proposal_failed", "No se pudieron proponer cambios.");
     },
     loadTailoringProposal: async () => null,
+    previewTailoredCv: async () => "<html></html>",
+    exportTailoredCv: async () => {
+      throw new ApplicationError("export_not_ready", "Quedan sugerencias sin revisar.");
+    },
+    loadTailoredCvExport: async () => {
+      throw new ApplicationError("export_not_found", "No hay un PDF con esa versión.");
+    },
     reviewSuggestion: async () => {
       throw new ApplicationError("proposal_not_found", "No hay una propuesta con ese identificador.");
     },

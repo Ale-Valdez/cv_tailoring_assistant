@@ -17,6 +17,12 @@ export const applicationErrorCodes = [
   "suggestion_not_found",
   "invalid_suggestion",
   "invalid_tailored_cv",
+  "invalid_html",
+  "html_too_large",
+  "pdf_failed",
+  "export_not_ready",
+  "export_not_found",
+  "invalid_storage_key",
 ] as const;
 
 export type ApplicationErrorCode = (typeof applicationErrorCodes)[number];

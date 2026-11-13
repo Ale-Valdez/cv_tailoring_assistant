@@ -18,27 +18,36 @@ const TARGET = {
 
 export function ProposalPanel({
   proposal,
+  previewHtml,
+  previewError,
   busy,
   error,
   canPropose,
   onPropose,
   onReview,
+  onExport,
+  onDownload,
 }: {
   proposal: TailoredCv | null;
+  previewHtml: string | null;
+  previewError: string | null;
   busy: boolean;
   error: string | null;
   canPropose: boolean;
   onPropose: () => void;
   onReview: (suggestionId: string, body: ReviewSuggestionRequest) => void;
+  onExport: () => void;
+  onDownload: (exportId: string) => void;
 }) {
   return (
-    <section className="flex flex-col gap-4 rounded-lg border border-neutral-200 bg-white p-5">
+    <section className="grid gap-6 rounded-lg border border-neutral-200 bg-white p-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,26rem)]">
+      <div className="flex flex-col gap-4">
       <header className="flex flex-col gap-1">
         <h2 className="text-lg font-semibold">Sugerencias</h2>
         <p className="text-sm leading-6 text-neutral-700">
           La propuesta usa el perfil sin datos de contacto. Solo quedan los cambios que el perfil ya respalda: se
           puede reformular, no agregar una herramienta, una empresa, una cifra o una fecha. Después aceptás, editás o
-          rechazás cada una.
+          rechazás cada una. La vista previa muestra el CV con lo ya aceptado o editado.
         </p>
       </header>
       {error ? (
@@ -74,10 +83,87 @@ export function ProposalPanel({
           ))}
         </ul>
       ) : null}
-      {proposal !== null && proposal.status === "final" ? (
-        <p className="text-sm text-neutral-600">No quedan sugerencias pendientes.</p>
+      {proposal !== null ? (
+        <ExportBox proposal={proposal} busy={busy} onExport={onExport} onDownload={onDownload} />
       ) : null}
+      </div>
+      {proposal !== null ? <CvPreview html={previewHtml} error={previewError} /> : null}
     </section>
+  );
+}
+
+function ExportBox({
+  proposal,
+  busy,
+  onExport,
+  onDownload,
+}: {
+  proposal: TailoredCv;
+  busy: boolean;
+  onExport: () => void;
+  onDownload: (exportId: string) => void;
+}) {
+  const versions = [...proposal.exports].sort((left, right) => left.version - right.version);
+  return (
+    <div className="flex flex-col gap-2">
+      {proposal.status === "final" ? (
+        <button
+          type="button"
+          className="w-fit rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          disabled={busy}
+          onClick={onExport}
+        >
+          {busy ? "Esperando…" : "Exportar PDF"}
+        </button>
+      ) : (
+        <p className="text-sm text-neutral-600">
+          Se exporta cuando no queda ninguna sugerencia pendiente. Rechazar también alcanza: queda el texto original.
+        </p>
+      )}
+      {versions.length > 0 ? (
+        <ul className="flex flex-col gap-1">
+          {versions.map((item) => (
+            <li key={item.id}>
+              <button
+                type="button"
+                className="text-sm text-neutral-800 underline disabled:opacity-50"
+                disabled={busy}
+                onClick={() => onDownload(item.id)}
+              >
+                Descargar versión {item.version}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+function CvPreview({ html, error }: { html: string | null; error: string | null }) {
+  return (
+    <aside className="flex flex-col gap-2 lg:sticky lg:top-6 lg:self-start">
+      <h2 className="text-lg font-semibold">Vista previa</h2>
+      <p className="text-sm leading-6 text-neutral-700">
+        Es el mismo HTML que después se exporta. Se actualiza al aceptar, guardar una edición o rechazar. El texto del
+        campo entra cuando lo guardás.
+      </p>
+      {error ? (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
+          {error}
+        </p>
+      ) : null}
+      {html !== null ? (
+        <iframe
+          title="Vista previa del CV"
+          sandbox=""
+          srcDoc={html}
+          className="h-[720px] w-full rounded-md border border-neutral-200 bg-white"
+        />
+      ) : error === null ? (
+        <p className="text-sm text-neutral-600">Cargando la vista previa…</p>
+      ) : null}
+    </aside>
   );
 }
 

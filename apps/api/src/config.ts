@@ -4,6 +4,8 @@ export type RuntimeConfig = {
   model: ModelConfig;
   databaseUrl: string;
   langsmithTracing: boolean;
+  filesDir: string;
+  rendererUrl: string;
 };
 
 type Env = Record<string, string | undefined>;
@@ -32,7 +34,16 @@ export function readRuntimeConfig(env: Env): RuntimeConfig {
     throw new Error("LANGSMITH_TRACING=true exige LANGSMITH_PROJECT.");
   }
 
-  return { model, databaseUrl, langsmithTracing };
+  const filesDir = env.FILES_DIR?.trim() ?? "";
+  if (filesDir.length === 0) {
+    throw new Error("Falta FILES_DIR.");
+  }
+  const rendererUrl = (env.RENDERER_URL?.trim() ?? "").replace(/\/$/, "");
+  if (rendererUrl.length === 0) {
+    throw new Error("Falta RENDERER_URL.");
+  }
+
+  return { model, databaseUrl, langsmithTracing, filesDir, rendererUrl };
 }
 
 export function readPort(raw: string | undefined): number {

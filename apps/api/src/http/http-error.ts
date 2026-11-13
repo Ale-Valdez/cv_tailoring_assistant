@@ -16,7 +16,12 @@ export function writeHttpError(
   }
 
   if (error instanceof ApplicationError) {
-    if (error.code === "extraction_failed" || error.code === "analysis_failed" || error.code === "proposal_failed") {
+    if (
+      error.code === "extraction_failed" ||
+      error.code === "analysis_failed" ||
+      error.code === "proposal_failed" ||
+      error.code === "pdf_failed"
+    ) {
       logger.error({ err: error }, `${error.code} failed`);
     }
     response.status(statusFor(error.code)).json({ code: error.code, message: error.message });
@@ -54,17 +59,23 @@ export function writeHttpError(
 }
 
 function statusFor(code: ApplicationErrorCode): number {
-  if (code === "pdf_too_large" || code === "job_text_too_long") {
+  if (code === "pdf_too_large" || code === "job_text_too_long" || code === "html_too_large") {
     return 413;
   }
-  if (code === "extraction_failed" || code === "analysis_failed" || code === "proposal_failed") {
+  if (
+    code === "extraction_failed" ||
+    code === "analysis_failed" ||
+    code === "proposal_failed" ||
+    code === "pdf_failed"
+  ) {
     return 502;
   }
   if (
     code === "profile_not_found" ||
     code === "job_not_found" ||
     code === "proposal_not_found" ||
-    code === "suggestion_not_found"
+    code === "suggestion_not_found" ||
+    code === "export_not_found"
   ) {
     return 404;
   }

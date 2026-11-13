@@ -22,9 +22,18 @@ services:
   web:
     build:
       target: dev
+    command: ["pnpm", "--filter", "@cv-tailor/web", "dev"]
     volumes:
       - .:/app
+      - web_next:/app/apps/web/.next
     environment:
       API_INTERNAL_URL: http://api:3001
+      # El bind mount no siempre avisa a inotify. Next vuelve a leer los archivos.
+      WATCH_POLL_INTERVAL_MS: "300"
     ports:
       - "${WEB_PORT:-3000}:3000"
+    healthcheck:
+      start_period: 40s
+
+volumes:
+  web_next:
