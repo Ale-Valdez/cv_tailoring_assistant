@@ -1,4 +1,4 @@
-import { createJobAnalyzer, createProfileExtractor, createTailoringProposer, type ModelConfig } from "@cv-tailor/adapter-ai";
+import { createJobAnalyzer, createProfileExtractor, createTailoringProposer } from "@cv-tailor/adapter-ai";
 import { createCvHtmlRenderer } from "@cv-tailor/adapter-cv-template";
 import { createPdfGenerator } from "@cv-tailor/adapter-pdf-renderer";
 import { createUnpdfTextReader } from "@cv-tailor/adapter-pdf-reader";
@@ -25,20 +25,22 @@ import {
   type ReviewDecision,
 } from "@cv-tailor/application";
 
-export function compose(input: {
-  model: ModelConfig;
-  langsmithTracing: boolean;
-  filesDir: string;
-  rendererUrl: string;
-}) {
+import type { RuntimeConfig } from "./config.ts";
+import {
+  createFixtureJobAnalyzer,
+  createFixtureProfileExtractor,
+  createFixtureTailoringProposer,
+} from "./fixture-adapters.ts";
+
+export function compose(input: RuntimeConfig) {
   const profiles = createPrismaProfileRepository();
   const jobs = createPrismaJobPostingRepository();
   const importDeps = {
     pdfTextReader: createUnpdfTextReader(),
-    profileExtractor: createProfileExtractor(input.model),
+    profileExtractor: input.fixtures ? createFixtureProfileExtractor() : createProfileExtractor(input.model),
   };
   const analyzeDeps = {
-    jobAnalyzer: createJobAnalyzer(input.model),
+    jobAnalyzer: input.fixtures ? createFixtureJobAnalyzer() : createJobAnalyzer(input.model),
     jobPostings: jobs,
   };
   const tailoredCvs = createPrismaTailoredCvRepository();
@@ -53,7 +55,7 @@ export function compose(input: {
     profiles,
     jobPostings: jobs,
     tailoredCvs,
-    proposer: createTailoringProposer(input.model),
+    proposer: input.fixtures ? createFixtureTailoringProposer() : createTailoringProposer(input.model),
   };
   return {
     langsmithTracing: input.langsmithTracing,

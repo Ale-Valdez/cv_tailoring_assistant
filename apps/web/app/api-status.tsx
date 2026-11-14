@@ -3,6 +3,8 @@
 import { healthResponseSchema } from "@cv-tailor/contracts";
 import { useEffect, useState } from "react";
 
+import { messageFromUnknown, readApiError } from "./api-error";
+
 type Status = { state: "loading" } | { state: "ok" } | { state: "error"; message: string };
 
 export function ApiStatus() {
@@ -14,7 +16,7 @@ export function ApiStatus() {
     fetch("/api/health", { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+          throw new Error(await readApiError(response));
         }
         const body: unknown = await response.json();
         healthResponseSchema.parse(body);
@@ -24,8 +26,11 @@ export function ApiStatus() {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
         }
-        const message = error instanceof Error ? error.message : "Error desconocido";
-        setStatus({ state: "error", message });
+        const message = messageFromUnknown(error, "La API no responde.");
+        setStatus({
+          state: "error",
+          message: message === "La API no responde." ? message : `La API no responde. ${message}`,
+        });
       });
 
     return () => controller.abort();
@@ -36,7 +41,7 @@ export function ApiStatus() {
   }
 
   if (status.state === "error") {
-    return <p className="text-red-700">La API no responde ({status.message}).</p>;
+    return <p className="text-red-700">{status.message}</p>;
   }
 
   return <p className="text-emerald-700">API disponible.</p>;

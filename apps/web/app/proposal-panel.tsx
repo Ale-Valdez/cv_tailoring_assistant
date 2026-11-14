@@ -3,6 +3,8 @@
 import type { ReviewSuggestionRequest, Suggestion, TailoredCv } from "@cv-tailor/contracts";
 import { useState } from "react";
 
+import { downloadLabel, exportLabel, proposeLabel, reviewLabel, type JobActivity } from "./job-activity";
+
 const STATUS = {
   pending: "Pendiente",
   accepted: "Aceptada",
@@ -20,7 +22,7 @@ export function ProposalPanel({
   proposal,
   previewHtml,
   previewError,
-  busy,
+  activity,
   error,
   canPropose,
   onPropose,
@@ -31,7 +33,7 @@ export function ProposalPanel({
   proposal: TailoredCv | null;
   previewHtml: string | null;
   previewError: string | null;
-  busy: boolean;
+  activity: JobActivity | null;
   error: string | null;
   canPropose: boolean;
   onPropose: () => void;
@@ -59,10 +61,10 @@ export function ProposalPanel({
         <button
           type="button"
           className="w-fit rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-          disabled={busy}
+          disabled={activity !== null}
           onClick={onPropose}
         >
-          {busy ? "Esperando…" : proposal === null ? "Proponer cambios" : "Actualizar propuesta"}
+          {proposeLabel(activity, proposal !== null)}
         </button>
       ) : (
         <p className="text-sm text-neutral-600">Confirmá el perfil para proponer cambios.</p>
@@ -77,14 +79,14 @@ export function ProposalPanel({
               key={`${suggestion.id}:${suggestion.status}:${suggestion.after}`}
               cv={proposal}
               suggestion={suggestion}
-              busy={busy}
+              activity={activity}
               onReview={onReview}
             />
           ))}
         </ul>
       ) : null}
       {proposal !== null ? (
-        <ExportBox proposal={proposal} busy={busy} onExport={onExport} onDownload={onDownload} />
+        <ExportBox proposal={proposal} activity={activity} onExport={onExport} onDownload={onDownload} />
       ) : null}
       </div>
       {proposal !== null ? <CvPreview html={previewHtml} error={previewError} /> : null}
@@ -94,12 +96,12 @@ export function ProposalPanel({
 
 function ExportBox({
   proposal,
-  busy,
+  activity,
   onExport,
   onDownload,
 }: {
   proposal: TailoredCv;
-  busy: boolean;
+  activity: JobActivity | null;
   onExport: () => void;
   onDownload: (exportId: string) => void;
 }) {
@@ -110,10 +112,10 @@ function ExportBox({
         <button
           type="button"
           className="w-fit rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-          disabled={busy}
+          disabled={activity !== null}
           onClick={onExport}
         >
-          {busy ? "Esperando…" : "Exportar PDF"}
+          {exportLabel(activity)}
         </button>
       ) : (
         <p className="text-sm text-neutral-600">
@@ -127,10 +129,10 @@ function ExportBox({
               <button
                 type="button"
                 className="text-sm text-neutral-800 underline disabled:opacity-50"
-                disabled={busy}
+                disabled={activity !== null}
                 onClick={() => onDownload(item.id)}
               >
-                Descargar versión {item.version}
+                {downloadLabel(activity, item.id, item.version)}
               </button>
             </li>
           ))}
@@ -170,12 +172,12 @@ function CvPreview({ html, error }: { html: string | null; error: string | null 
 function SuggestionCard({
   cv,
   suggestion,
-  busy,
+  activity,
   onReview,
 }: {
   cv: TailoredCv;
   suggestion: Suggestion;
-  busy: boolean;
+  activity: JobActivity | null;
   onReview: (suggestionId: string, body: ReviewSuggestionRequest) => void;
 }) {
   const [text, setText] = useState(suggestion.after);
@@ -195,7 +197,7 @@ function SuggestionCard({
         <textarea
           className="mt-1 min-h-24 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
           value={text}
-          disabled={busy}
+          disabled={activity !== null}
           onChange={(event) => setText(event.target.value)}
         />
       ) : (
@@ -212,26 +214,26 @@ function SuggestionCard({
           <button
             type="button"
             className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-            disabled={busy}
+            disabled={activity !== null}
             onClick={() => onReview(suggestion.id, { decision: "accept" })}
           >
-            Aceptar
+            {reviewLabel(activity, suggestion.id, "accept")}
           </button>
           <button
             type="button"
             className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm disabled:opacity-50"
-            disabled={busy || !edited || text.trim().length === 0}
+            disabled={activity !== null || !edited || text.trim().length === 0}
             onClick={() => onReview(suggestion.id, { decision: "edit", text })}
           >
-            Guardar edición
+            {reviewLabel(activity, suggestion.id, "edit")}
           </button>
           <button
             type="button"
             className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm disabled:opacity-50"
-            disabled={busy}
+            disabled={activity !== null}
             onClick={() => onReview(suggestion.id, { decision: "reject" })}
           >
-            Rechazar
+            {reviewLabel(activity, suggestion.id, "reject")}
           </button>
         </div>
       ) : null}

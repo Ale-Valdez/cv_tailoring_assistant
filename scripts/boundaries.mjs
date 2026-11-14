@@ -4,7 +4,7 @@ import { cruise, format } from "dependency-cruiser";
 const require = createRequire(import.meta.url);
 const ruleSet = require("../.dependency-cruiser.cjs");
 
-const cruiseResult = await cruise(["apps", "packages"], {
+const cruiseResult = await cruise(["apps", "packages", "tests"], {
   validate: true,
   ruleSet,
 });

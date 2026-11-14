@@ -14,6 +14,8 @@ import {
 } from "@cv-tailor/contracts";
 import { useEffect, useState } from "react";
 
+import { messageFromUnknown, readApiError } from "./api-error";
+import { analyzeLabel, matchLabel, type JobActivity } from "./job-activity";
 import { ProposalPanel } from "./proposal-panel";
 
 const KIND = { technical: "Técnico", functional: "Funcional" } as const;
@@ -24,7 +26,7 @@ type Ready = {
   phase: "ready";
   privacy: PrivacyResponse;
   text: string;
-  busy: boolean;
+  activity: JobActivity | null;
   error: string | null;
   job: JobPosting | null;
   match: JobMatchReport | null;
@@ -49,7 +51,7 @@ export function JobFlow() {
       try {
         const privacyResponse = await fetch("/api/privacy", { signal: controller.signal });
         if (!privacyResponse.ok) {
-          throw new Error(`HTTP ${privacyResponse.status}`);
+          throw new Error(await readApiError(privacyResponse));
         }
         const privacy = privacyResponseSchema.parse(await privacyResponse.json());
         const current = await fetch("/api/jobs/current", { signal: controller.signal });
@@ -61,7 +63,7 @@ export function JobFlow() {
             phase: "ready",
             privacy,
             text: "",
-            busy: false,
+            activity: null,
             error: null,
             job: null,
             match: null,
@@ -74,7 +76,7 @@ export function JobFlow() {
           return;
         }
         if (!current.ok) {
-          throw new Error(await readError(current));
+          throw new Error(await readApiError(current));
         }
         const job = jobPostingSchema.parse(await current.json());
         const coverage = await loadMatch(job.id);
@@ -87,7 +89,7 @@ export function JobFlow() {
           phase: "ready",
           privacy,
           text: job.rawText,
-          busy: false,
+          activity: null,
           error: null,
           job,
           match: coverage.match,
@@ -104,8 +106,7 @@ export function JobFlow() {
         if (!active) {
           return;
         }
-        const message = error instanceof Error ? error.message : "No se pudo preparar la oferta.";
-        setFlow({ phase: "error", message });
+        setFlow({ phase: "error", message: messageFromUnknown(error, "La respuesta no es válida.") });
       }
     })();
 
@@ -160,7 +161,7 @@ export function JobFlow() {
             className="min-h-40 rounded-md border border-neutral-300 px-3 py-2"
             value={flow.text}
             maxLength={flow.privacy.maxJobTextChars}
-            disabled={flow.busy}
+            disabled={flow.activity !== null}
             onChange={(event) => setFlow({ ...flow, text: event.target.value, error: null })}
           />
         </label>
@@ -175,9 +176,9 @@ export function JobFlow() {
         <button
           type="submit"
           className="w-fit rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-          disabled={flow.busy}
+          disabled={flow.activity !== null}
         >
-          {flow.busy ? "Analizando…" : "Analizar"}
+          {analyzeLabel(flow.activity)}
         </button>
       </form>
       {flow.job ? (
@@ -186,7 +187,7 @@ export function JobFlow() {
             job={flow.job}
             match={flow.match}
             matchNotice={flow.matchNotice}
-            busy={flow.busy}
+            activity={flow.activity}
             onRefresh={() => {
               void refreshMatch(flow, setFlow);
             }}
@@ -195,7 +196,7 @@ export function JobFlow() {
             proposal={flow.proposal}
             previewHtml={flow.previewHtml}
             previewError={flow.previewError}
-            busy={flow.busy}
+            activity={flow.activity}
             error={flow.proposalError}
             canPropose={flow.match !== null}
             onPropose={() => {
@@ -221,13 +222,13 @@ function JobReport({
   job,
   match,
   matchNotice,
-  busy,
+  activity,
   onRefresh,
 }: {
   job: JobPosting;
   match: JobMatchReport | null;
   matchNotice: string | null;
-  busy: boolean;
+  activity: JobActivity | null;
   onRefresh: () => void;
 }) {
   const evidence = new Map(match?.citedBullets.map((bullet) => [bullet.bulletId, bullet.text]) ?? []);
@@ -251,10 +252,10 @@ function JobReport({
       <button
         type="button"
         className="w-fit rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm disabled:opacity-50"
-        disabled={busy}
+        disabled={activity !== null}
         onClick={onRefresh}
       >
-        Actualizar cobertura
+        {matchLabel(activity)}
       </button>
       {counts ? (
         <p className="text-sm text-neutral-700">
@@ -331,19 +332,18 @@ async function refreshMatch(flow: Ready, setFlow: (flow: Flow) => void): Promise
   if (flow.job === null) {
     return;
   }
-  setFlow({ ...flow, busy: true, error: null });
+  setFlow({ ...flow, activity: { kind: "match" }, error: null });
   try {
     const coverage = await loadMatch(flow.job.id);
     setFlow({
       ...flow,
-      busy: false,
+      activity: null,
       error: null,
       match: coverage.match,
       matchNotice: coverage.notice,
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "No se pudo comparar la oferta.";
-    setFlow({ ...flow, busy: false, error: message });
+    setFlow({ ...flow, activity: null, error: messageFromUnknown(error, "No se pudo comparar la oferta.") });
   }
 }
 
@@ -360,7 +360,7 @@ async function submit(flow: Ready, setFlow: (flow: Flow) => void): Promise<void>
     });
     return;
   }
-  setFlow({ ...flow, busy: true, error: null });
+  setFlow({ ...flow, activity: { kind: "analyze" }, error: null });
   try {
     const response = await fetch("/api/jobs/analyze", {
       method: "POST",
@@ -368,12 +368,12 @@ async function submit(flow: Ready, setFlow: (flow: Flow) => void): Promise<void>
       body: JSON.stringify({ text }),
     });
     if (!response.ok) {
-      setFlow({ ...flow, busy: false, error: await readError(response) });
+      setFlow({ ...flow, activity: null, error: await readApiError(response) });
       return;
     }
     const parsed = jobPostingSchema.safeParse(await response.json());
     if (!parsed.success) {
-      setFlow({ ...flow, busy: false, error: "La respuesta del análisis no es una oferta válida." });
+      setFlow({ ...flow, activity: null, error: "La respuesta del análisis no es una oferta válida." });
       return;
     }
     const coverage = await loadMatch(parsed.data.id);
@@ -382,7 +382,7 @@ async function submit(flow: Ready, setFlow: (flow: Flow) => void): Promise<void>
     setFlow({
       ...flow,
       text,
-      busy: false,
+      activity: null,
       error: null,
       job: parsed.data,
       match: coverage.match,
@@ -393,8 +393,7 @@ async function submit(flow: Ready, setFlow: (flow: Flow) => void): Promise<void>
       previewError: preview.previewError,
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "No se pudo analizar la oferta.";
-    setFlow({ ...flow, busy: false, error: message });
+    setFlow({ ...flow, activity: null, error: messageFromUnknown(error, "No se pudo analizar la oferta.") });
   }
 }
 
@@ -402,30 +401,29 @@ async function propose(flow: Ready, setFlow: (flow: Flow) => void): Promise<void
   if (flow.job === null) {
     return;
   }
-  setFlow({ ...flow, busy: true, proposalError: null });
+  setFlow({ ...flow, activity: { kind: "propose" }, proposalError: null });
   try {
     const response = await fetch(`/api/jobs/${flow.job.id}/proposals`, { method: "POST" });
     if (!response.ok) {
-      setFlow({ ...flow, busy: false, proposalError: await readError(response) });
+      setFlow({ ...flow, activity: null, proposalError: await readApiError(response) });
       return;
     }
     const parsed = tailoredCvSchema.safeParse(await response.json());
     if (!parsed.success) {
-      setFlow({ ...flow, busy: false, proposalError: "La respuesta de la propuesta no es válida." });
+      setFlow({ ...flow, activity: null, proposalError: "La respuesta de la propuesta no es válida." });
       return;
     }
     const preview = await readPreview(flow.job.id);
     setFlow({
       ...flow,
-      busy: false,
+      activity: null,
       proposal: parsed.data,
       proposalError: null,
       previewHtml: preview.previewHtml,
       previewError: preview.previewError,
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "No se pudieron proponer cambios.";
-    setFlow({ ...flow, busy: false, proposalError: message });
+    setFlow({ ...flow, activity: null, proposalError: messageFromUnknown(error, "No se pudieron proponer cambios.") });
   }
 }
 
@@ -438,7 +436,7 @@ async function review(
   if (flow.proposal === null) {
     return;
   }
-  setFlow({ ...flow, busy: true, proposalError: null });
+  setFlow({ ...flow, activity: { kind: "review", suggestionId, decision: body.decision }, proposalError: null });
   try {
     const response = await fetch(`/api/proposals/${flow.proposal.id}/suggestions/${suggestionId}/review`, {
       method: "POST",
@@ -446,26 +444,25 @@ async function review(
       body: JSON.stringify(body),
     });
     if (!response.ok) {
-      setFlow({ ...flow, busy: false, proposalError: await readError(response) });
+      setFlow({ ...flow, activity: null, proposalError: await readApiError(response) });
       return;
     }
     const parsed = tailoredCvSchema.safeParse(await response.json());
     if (!parsed.success) {
-      setFlow({ ...flow, busy: false, proposalError: "La respuesta de la revisión no es válida." });
+      setFlow({ ...flow, activity: null, proposalError: "La respuesta de la revisión no es válida." });
       return;
     }
     const preview = flow.job === null ? { previewHtml: null, previewError: null } : await readPreview(flow.job.id);
     setFlow({
       ...flow,
-      busy: false,
+      activity: null,
       proposal: parsed.data,
       proposalError: null,
       previewHtml: preview.previewHtml,
       previewError: preview.previewError,
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "No se pudo revisar la sugerencia.";
-    setFlow({ ...flow, busy: false, proposalError: message });
+    setFlow({ ...flow, activity: null, proposalError: messageFromUnknown(error, "No se pudo revisar la sugerencia.") });
   }
 }
 
@@ -473,33 +470,32 @@ async function exportPdf(flow: Ready, setFlow: (flow: Flow) => void): Promise<vo
   if (flow.job === null) {
     return;
   }
-  setFlow({ ...flow, busy: true, proposalError: null });
+  setFlow({ ...flow, activity: { kind: "export" }, proposalError: null });
   try {
     const response = await fetch(`/api/jobs/${flow.job.id}/proposal/export`, { method: "POST" });
     if (!response.ok) {
-      setFlow({ ...flow, busy: false, proposalError: await readError(response) });
+      setFlow({ ...flow, activity: null, proposalError: await readApiError(response) });
       return;
     }
     const parsed = tailoredCvSchema.safeParse(await response.json());
     if (!parsed.success) {
-      setFlow({ ...flow, busy: false, proposalError: "La respuesta de la exportación no es válida." });
+      setFlow({ ...flow, activity: null, proposalError: "La respuesta de la exportación no es válida." });
       return;
     }
     const newest = [...parsed.data.exports].sort((left, right) => right.version - left.version)[0];
     if (newest === undefined) {
-      setFlow({ ...flow, busy: false, proposal: parsed.data, proposalError: "La exportación no trajo un PDF." });
+      setFlow({ ...flow, activity: null, proposal: parsed.data, proposalError: "La exportación no trajo un PDF." });
       return;
     }
     const file = await fetch(`/api/jobs/${flow.job.id}/proposal/exports/${newest.id}`);
     if (!file.ok) {
-      setFlow({ ...flow, busy: false, proposal: parsed.data, proposalError: await readError(file) });
+      setFlow({ ...flow, activity: null, proposal: parsed.data, proposalError: await readApiError(file) });
       return;
     }
     savePdf(await file.blob(), filenameFrom(file.headers.get("content-disposition")) ?? `cv-v${newest.version}.pdf`);
-    setFlow({ ...flow, busy: false, proposal: parsed.data, proposalError: null });
+    setFlow({ ...flow, activity: null, proposal: parsed.data, proposalError: null });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "No se pudo exportar el PDF.";
-    setFlow({ ...flow, busy: false, proposalError: message });
+    setFlow({ ...flow, activity: null, proposalError: messageFromUnknown(error, "No se pudo exportar el PDF.") });
   }
 }
 
@@ -507,19 +503,18 @@ async function downloadExport(flow: Ready, setFlow: (flow: Flow) => void, export
   if (flow.job === null) {
     return;
   }
-  setFlow({ ...flow, busy: true, proposalError: null });
+  setFlow({ ...flow, activity: { kind: "download", exportId }, proposalError: null });
   try {
     const response = await fetch(`/api/jobs/${flow.job.id}/proposal/exports/${exportId}`);
     if (!response.ok) {
-      setFlow({ ...flow, busy: false, proposalError: await readError(response) });
+      setFlow({ ...flow, activity: null, proposalError: await readApiError(response) });
       return;
     }
     const version = flow.proposal?.exports.find((item) => item.id === exportId)?.version;
     savePdf(await response.blob(), filenameFrom(response.headers.get("content-disposition")) ?? `cv-v${version ?? 1}.pdf`);
-    setFlow({ ...flow, busy: false });
+    setFlow({ ...flow, activity: null });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "No se pudo descargar el PDF.";
-    setFlow({ ...flow, busy: false, proposalError: message });
+    setFlow({ ...flow, activity: null, proposalError: messageFromUnknown(error, "No se pudo descargar el PDF.") });
   }
 }
 
@@ -550,7 +545,7 @@ async function loadProposal(jobId: string): Promise<TailoredCv | null> {
     return null;
   }
   if (!response.ok) {
-    throw new Error(await readError(response));
+    throw new Error(await readApiError(response));
   }
   const parsed = tailoredCvSchema.safeParse(await response.json());
   if (!parsed.success) {
@@ -566,12 +561,11 @@ async function readPreview(jobId: string): Promise<{ previewHtml: string | null;
       return { previewHtml: null, previewError: null };
     }
     if (!response.ok) {
-      return { previewHtml: null, previewError: await readError(response) };
+      return { previewHtml: null, previewError: await readApiError(response) };
     }
     return { previewHtml: await response.text(), previewError: null };
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "No se pudo mostrar la vista previa.";
-    return { previewHtml: null, previewError: message };
+    return { previewHtml: null, previewError: messageFromUnknown(error, "No se pudo mostrar la vista previa.") };
   }
 }
 
@@ -585,7 +579,7 @@ async function loadMatch(jobId: string): Promise<{ match: JobMatchReport | null;
     }
   }
   if (!response.ok) {
-    throw new Error(await readError(response));
+    throw new Error(await readApiError(response));
   }
   const parsed = jobMatchReportSchema.safeParse(await response.json());
   if (!parsed.success) {
@@ -613,15 +607,6 @@ function statusClass(status: JobMatchReport["matchResults"][number]["status"]): 
     return "rounded-full bg-amber-50 px-2 py-1 text-amber-950";
   }
   return "rounded-full bg-red-50 px-2 py-1 text-red-800";
-}
-
-async function readError(response: Response): Promise<string> {
-  const body: unknown = await response.json().catch(() => null);
-  const parsed = apiErrorSchema.safeParse(body);
-  if (parsed.success) {
-    return parsed.data.message;
-  }
-  return `HTTP ${response.status}`;
 }
 
 function langsmithCopy(tracing: boolean): string {

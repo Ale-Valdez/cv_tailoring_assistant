@@ -1,17 +1,23 @@
 import { readModelConfig, type ModelConfig } from "@cv-tailor/adapter-ai";
 
-export type RuntimeConfig = {
-  model: ModelConfig;
+type SharedRuntime = {
   databaseUrl: string;
   langsmithTracing: boolean;
   filesDir: string;
   rendererUrl: string;
 };
 
+export type RuntimeConfig = SharedRuntime & ({ fixtures: true } | { fixtures: false; model: ModelConfig });
+
 type Env = Record<string, string | undefined>;
 
 export function readRuntimeConfig(env: Env): RuntimeConfig {
-  const model = readModelConfig(env);
+  const fixturesRaw = env.E2E_FIXTURES?.trim() ?? "false";
+  if (fixturesRaw !== "true" && fixturesRaw !== "false") {
+    throw new Error('E2E_FIXTURES debe ser "true" o "false".');
+  }
+  const fixtures = fixturesRaw === "true";
+  const model = fixtures ? null : readModelConfig(env);
 
   const databaseUrl = env.DATABASE_URL?.trim() ?? "";
   if (databaseUrl.length === 0) {
@@ -43,7 +49,11 @@ export function readRuntimeConfig(env: Env): RuntimeConfig {
     throw new Error("Falta RENDERER_URL.");
   }
 
-  return { model, databaseUrl, langsmithTracing, filesDir, rendererUrl };
+  const shared = { databaseUrl, langsmithTracing, filesDir, rendererUrl };
+  if (model === null) {
+    return { ...shared, fixtures: true };
+  }
+  return { ...shared, fixtures: false, model };
 }
 
 export function readPort(raw: string | undefined): number {

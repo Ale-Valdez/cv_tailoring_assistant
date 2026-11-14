@@ -112,10 +112,20 @@ module.exports = {
     {
       name: "playwright-only-in-renderer",
       severity: "error",
-      comment: "Playwright solo se importa desde apps/renderer (ADR-014, ADR-016).",
+      comment:
+        "El paquete playwright solo se importa desde apps/renderer (ADR-014, ADR-016). @playwright/test es otra regla.",
       from: { pathNot: "^apps/renderer/" },
       to: {
-        path: "(^|/)node_modules/(playwright|playwright-core)(/|$)|(^|/)node_modules/@playwright/|^(playwright|playwright-core)(/|$)|^@playwright/",
+        path: "(^|/)node_modules/(playwright|playwright-core)(/|$)|^(playwright|playwright-core)(/|$)",
+      },
+    },
+    {
+      name: "playwright-test-only-in-e2e",
+      severity: "error",
+      comment: "@playwright/test solo se importa desde tests/ (ADR-016).",
+      from: { pathNot: "^tests/" },
+      to: {
+        path: "(^|/)node_modules/@playwright/|^@playwright/",
       },
     },
   ],
@@ -125,7 +135,7 @@ module.exports = {
     },
     exclude: {
       // Los tests importan Vitest. No es dependencia de producción (ADR-016).
-      path: "(^|/)\\.next/|\\.css$|\\.test\\.ts$|(^|/)vitest\\.config\\.ts$",
+      path: "(^|/)\\.next/|\\.css$|\\.test\\.ts$|(^|/)vitest\\.config\\.ts$|(^|/)(test-results|playwright-report)/",
     },
     // dependency-cruiser 18 no acepta TypeScript 7. swc lee los .ts y también los import type.
     parser: "swc",

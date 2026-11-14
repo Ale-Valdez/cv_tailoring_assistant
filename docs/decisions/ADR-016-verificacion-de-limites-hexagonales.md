@@ -18,7 +18,7 @@ La configuración está en `.dependency-cruiser.cjs`. El parser es `swc` (`@swc/
 - `apps/web` solo importa `contracts` del monorepo.
 - `apps/renderer` no importa paquetes del monorepo.
 - `apps/api` importa `application`, `contracts` y los adaptadores. No importa `domain`, `web` ni `renderer`.
-- Express solo se importa desde `apps/api`. Prisma solo desde `adapter-persistence`. LangChain, LangGraph y el paquete `openai` solo desde `adapter-ai`. Playwright solo desde `apps/renderer`.
+- Express solo se importa desde `apps/api`. Prisma solo desde `adapter-persistence`. LangChain, LangGraph y el paquete `openai` solo desde `adapter-ai`. El paquete `playwright` solo desde `apps/renderer`. `@playwright/test` solo desde `tests/` (la prueba e2e de la Fase 5). `pnpm boundaries` analiza `apps/`, `packages/` y `tests/`.
 - Ningún paquete interno importa de `apps/*`.
 
 `packages/config` no forma parte de este paso: no hay ESLint compartido. El tsconfig base sigue en la raíz.

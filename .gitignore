@@ -8,6 +8,9 @@ coverage/
 .env
 .env.local
 .data/
+tests/test-results/
+tests/playwright-report/
+tests/blob-report/
 .env.*.local
 npm-debug.log*
 pnpm-debug.log*

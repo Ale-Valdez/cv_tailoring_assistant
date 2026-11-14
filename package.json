@@ -10,6 +10,7 @@
     "boundaries": "pnpm --filter @cv-tailor/adapter-persistence generate && node scripts/boundaries.mjs",
     "db:migrate": "node scripts/prisma.mjs migrate deploy",
     "test": "pnpm -r --if-present test",
+    "test:e2e": "pnpm --filter @cv-tailor/e2e test:e2e",
     "check": "pnpm typecheck && pnpm test && pnpm boundaries",
     "dev": "pnpm --parallel --filter @cv-tailor/api --filter @cv-tailor/web --filter @cv-tailor/renderer dev",
     "compose": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build",

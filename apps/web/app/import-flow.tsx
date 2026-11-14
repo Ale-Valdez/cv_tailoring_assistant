@@ -1,14 +1,9 @@
 "use client";
 
-import {
-  apiErrorSchema,
-  privacyResponseSchema,
-  profileSchema,
-  type PrivacyResponse,
-  type Profile,
-} from "@cv-tailor/contracts";
+import { privacyResponseSchema, profileSchema, type PrivacyResponse, type Profile } from "@cv-tailor/contracts";
 import { useEffect, useState } from "react";
 
+import { messageFromUnknown, readApiError } from "./api-error";
 import { ProfileEditor } from "./profile-editor";
 
 const CONSENT_KEY = "cv-tailor.llm-consent";
@@ -39,7 +34,7 @@ export function ImportFlow() {
       try {
         const response = await fetch("/api/privacy", { signal: controller.signal });
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+          throw new Error(await readApiError(response));
         }
         const privacy = privacyResponseSchema.parse(await response.json());
         const saved = await fetch("/api/profiles/current", { signal: controller.signal });
@@ -48,7 +43,7 @@ export function ImportFlow() {
         }
         if (saved.status !== 404) {
           if (!saved.ok) {
-            throw new Error(await readError(saved));
+            throw new Error(await readApiError(saved));
           }
           const profile = profileSchema.parse(await saved.json());
           if (profile.status !== "confirmed") {
@@ -77,8 +72,7 @@ export function ImportFlow() {
         if (!active) {
           return;
         }
-        const message = error instanceof Error ? error.message : "No se pudo preparar la pantalla.";
-        setFlow({ phase: "privacy-error", message });
+        setFlow({ phase: "privacy-error", message: messageFromUnknown(error, "La respuesta no es válida.") });
       }
     })();
 
@@ -217,7 +211,7 @@ function UploadPanel({
             onError(result.message);
           },
           (reason: unknown) => {
-            onError(reason instanceof Error ? reason.message : "No se pudo importar el PDF.");
+            onError(messageFromUnknown(reason, "No se pudo importar el PDF."));
           },
         );
       }}
@@ -274,7 +268,7 @@ async function sendPdf(
     body: await file.arrayBuffer(),
   });
   if (!response.ok) {
-    return { ok: false, message: await readError(response) };
+    return { ok: false, message: await readApiError(response) };
   }
   const parsed = profileSchema.safeParse(await response.json());
   if (!parsed.success) {
@@ -292,7 +286,7 @@ async function confirm(flow: Extract<Flow, { phase: "review" }>, setFlow: (flow:
       body: JSON.stringify(flow.profile),
     });
     if (!response.ok) {
-      setFlow({ ...flow, busy: false, error: await readError(response) });
+      setFlow({ ...flow, busy: false, error: await readApiError(response) });
       return;
     }
     const parsed = profileSchema.safeParse(await response.json());
@@ -308,18 +302,8 @@ async function confirm(flow: Extract<Flow, { phase: "review" }>, setFlow: (flow:
       notice: "Perfil confirmado y guardado.",
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "No se pudo confirmar el perfil.";
-    setFlow({ ...flow, busy: false, error: message });
+    setFlow({ ...flow, busy: false, error: messageFromUnknown(error, "No se pudo confirmar el perfil.") });
   }
-}
-
-async function readError(response: Response): Promise<string> {
-  const body: unknown = await response.json().catch(() => null);
-  const parsed = apiErrorSchema.safeParse(body);
-  if (parsed.success) {
-    return parsed.data.message;
-  }
-  return `HTTP ${response.status}`;
 }
 
 function langsmithCopy(tracing: boolean): string {
