@@ -5,6 +5,7 @@ import type {
   ContactLink,
   DateSpan,
   Experience,
+  LanguageLevel,
   Profile,
   Project,
   SkillEntry,
@@ -19,6 +20,29 @@ const inputClass =
 const buttonClass =
   "rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50 disabled:opacity-50";
 const removeClass = "text-sm text-red-700 underline-offset-2 hover:underline disabled:opacity-50";
+
+const PROFILE_SECTIONS = [
+  { id: "contacto", title: "Contacto" },
+  { id: "resumen", title: "Resumen" },
+  { id: "idioma", title: "Idioma" },
+  { id: "idiomas", title: "Idiomas hablados" },
+  { id: "experiencia", title: "Experiencia" },
+  { id: "formacion", title: "Formación" },
+  { id: "habilidades", title: "Habilidades" },
+  { id: "proyectos", title: "Proyectos" },
+] as const;
+
+const LANGUAGE_LEVELS: { value: LanguageLevel; label: string }[] = [
+  { value: "native", label: "Nativo" },
+  { value: "A1", label: "A1 · Principiante" },
+  { value: "A2", label: "A2 · Elemental" },
+  { value: "B1", label: "B1 · Intermedio" },
+  { value: "B2", label: "B2 · Intermedio alto" },
+  { value: "C1", label: "C1 · Avanzado" },
+  { value: "C2", label: "C2 · Maestría" },
+];
+
+const MAX_PHOTO_BYTES = 1024 * 1024;
 
 export function ProfileEditor({
   profile,
@@ -37,11 +61,52 @@ export function ProfileEditor({
   onConfirm: () => void;
   onImportAnother: () => void;
 }) {
+  const [photoError, setPhotoError] = useState<string | null>(null);
+
   function edit(next: Profile) {
     onChange({ ...next, status: "needs_review" });
   }
 
+  function onPhotoSelected(file: File | undefined) {
+    if (file === undefined) {
+      return;
+    }
+    if (file.type !== "image/jpeg" && file.type !== "image/png" && file.type !== "image/webp") {
+      setPhotoError("La foto tiene que ser JPEG, PNG o WebP.");
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      setPhotoError("La foto supera 1 MiB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== "string") {
+        setPhotoError("No se pudo leer la foto.");
+        return;
+      }
+      setPhotoError(null);
+      edit({ ...profile, contact: { ...profile.contact, photo: reader.result } });
+    };
+    reader.readAsDataURL(file);
+  }
+
   return (
+    <div className="grid items-start gap-8 lg:grid-cols-[12rem_minmax(0,1fr)]">
+      <nav
+        aria-label="Bloques del perfil"
+        className="flex flex-wrap gap-x-4 gap-y-2 lg:sticky lg:top-20 lg:flex-col"
+      >
+        {PROFILE_SECTIONS.map((section) => (
+          <a
+            key={section.id}
+            href={`#${section.id}`}
+            className="text-sm text-neutral-700 underline-offset-2 hover:underline"
+          >
+            {section.title}
+          </a>
+        ))}
+      </nav>
     <form
       className="flex flex-col gap-8"
       onSubmit={(event) => {
@@ -66,14 +131,21 @@ export function ProfileEditor({
         no confirmes se pierde al recargar.
       </p>
 
-      <Section title="Contacto">
+      <Section id="contacto" title="Contacto">
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field
-            label="Nombre"
-            value={profile.contact.name}
-            disabled={busy}
-            onChange={(name) => edit({ ...profile, contact: { ...profile.contact, name } })}
-          />
+          <div className="grid gap-1">
+            <Field
+              label="Nombre"
+              value={profile.contact.name}
+              disabled={busy}
+              onChange={(name) => edit({ ...profile, contact: { ...profile.contact, name } })}
+            />
+            {isSingleWordName(profile.contact.name) ? (
+              <p className="text-sm text-amber-950">
+                El nombre tiene una sola palabra. El PDF imprime ese texto tal cual.
+              </p>
+            ) : null}
+          </div>
           <Field
             label="Email"
             value={profile.contact.email ?? ""}
@@ -116,9 +188,54 @@ export function ProfileEditor({
           disabled={busy}
           onChange={(links) => edit({ ...profile, contact: { ...profile.contact, links } })}
         />
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium">Foto de perfil</span>
+          <p className="text-sm text-neutral-500">
+            Opcional. JPEG, PNG o WebP, hasta 1 MiB. En el PDF sale circular y no se envía al modelo.
+          </p>
+          {profile.contact.photo ? (
+            <img
+              src={profile.contact.photo}
+              alt=""
+              className="h-16 w-16 rounded-full object-cover"
+            />
+          ) : null}
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              disabled={busy}
+              aria-label="Foto de perfil"
+              className="text-sm"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                onPhotoSelected(file);
+              }}
+            />
+            {profile.contact.photo ? (
+              <button
+                type="button"
+                className={removeClass}
+                disabled={busy}
+                onClick={() => {
+                  setPhotoError(null);
+                  edit({ ...profile, contact: { ...profile.contact, photo: null } });
+                }}
+              >
+                Quitar foto
+              </button>
+            ) : null}
+          </div>
+          {photoError ? (
+            <p className="text-sm text-red-700" role="alert">
+              {photoError}
+            </p>
+          ) : null}
+        </div>
       </Section>
 
-      <Section title="Resumen">
+      <Section id="resumen" title="Resumen">
         <label className="grid gap-1 text-sm">
           <span className="font-medium">Texto</span>
           <textarea
@@ -133,17 +250,49 @@ export function ProfileEditor({
         </label>
       </Section>
 
-      <Section title="Idioma">
-        <Field
-          label="Etiqueta"
-          value={profile.language}
-          disabled={busy}
-          onChange={(language) => edit({ ...profile, language })}
-        />
-        <p className="text-sm text-neutral-500">Una etiqueta corta, por ejemplo es o en.</p>
+      <Section id="idioma" title="Idioma">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field
+            label="Idioma del texto"
+            value={profile.language}
+            disabled={busy}
+            onChange={(language) => edit({ ...profile, language })}
+          />
+          <label className="grid gap-1 text-sm">
+            <span className="font-medium">Idioma del CV</span>
+            <select
+              className={inputClass}
+              value={profile.displayLanguage}
+              disabled={busy}
+              onChange={(event) =>
+                edit({
+                  ...profile,
+                  displayLanguage: event.target.value === "en" ? "en" : "es",
+                })
+              }
+            >
+              <option value="es">Español</option>
+              <option value="en">English</option>
+            </select>
+          </label>
+        </div>
+        <p className="text-sm text-neutral-500">
+          El idioma del texto es el del CV escrito, por ejemplo es. El idioma del CV cambia los rótulos y los meses, y no traduce el contenido.
+        </p>
       </Section>
 
-      <Section title="Experiencia">
+      <Section id="idiomas" title="Idiomas hablados">
+        <p className="text-sm text-neutral-500">
+          Opcional. Español nativo e inglés B1 son dos filas. No se inventan al importar el PDF.
+        </p>
+        <SpokenLanguagesEditor
+          languages={profile.spokenLanguages}
+          disabled={busy}
+          onChange={(spokenLanguages) => edit({ ...profile, spokenLanguages })}
+        />
+      </Section>
+
+      <Section id="experiencia" title="Experiencia">
         {profile.experiences.map((experience, index) => (
           <ExperienceCard
             key={experience.id}
@@ -170,7 +319,7 @@ export function ProfileEditor({
         </button>
       </Section>
 
-      <Section title="Formación">
+      <Section id="formacion" title="Formación">
         {profile.education.map((education, index) => (
           <article key={education.id} className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4">
             <div className="grid gap-3 sm:grid-cols-2">
@@ -220,7 +369,7 @@ export function ProfileEditor({
         </button>
       </Section>
 
-      <Section title="Habilidades">
+      <Section id="habilidades" title="Habilidades">
         <SkillsEditor
           skills={profile.skills}
           disabled={busy}
@@ -228,7 +377,7 @@ export function ProfileEditor({
         />
       </Section>
 
-      <Section title="Proyectos">
+      <Section id="proyectos" title="Proyectos">
         {profile.projects.map((project, index) => (
           <ProjectCard
             key={project.id}
@@ -269,12 +418,13 @@ export function ProfileEditor({
         {busy ? "Confirmando…" : "Confirmar perfil"}
       </button>
     </form>
+    </div>
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
-    <section className="flex flex-col gap-4">
+    <section id={id} className="flex scroll-mt-24 flex-col gap-4">
       <h2 className="text-lg font-semibold">{title}</h2>
       {children}
     </section>
@@ -342,6 +492,103 @@ function SpanFields({
         />
         En curso
       </label>
+    </div>
+  );
+}
+
+function SpokenLanguagesEditor({
+  languages,
+  disabled,
+  onChange,
+}: {
+  languages: Profile["spokenLanguages"];
+  disabled: boolean;
+  onChange: (languages: Profile["spokenLanguages"]) => void;
+}) {
+  const [name, setName] = useState("");
+  const [level, setLevel] = useState<LanguageLevel>("B1");
+
+  return (
+    <div className="flex flex-col gap-3">
+      {languages.map((spoken, index) => (
+        <div key={index} className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
+          <Field
+            label="Idioma"
+            value={spoken.language}
+            disabled={disabled}
+            onChange={(language) => onChange(replaceAt(languages, index, { ...spoken, language }))}
+          />
+          <label className="grid gap-1 text-sm">
+            <span className="font-medium">Nivel</span>
+            <select
+              className={inputClass}
+              value={spoken.level}
+              disabled={disabled}
+              aria-label={`Nivel de ${spoken.language}`}
+              onChange={(event) =>
+                onChange(
+                  replaceAt(languages, index, {
+                    ...spoken,
+                    level: event.target.value as LanguageLevel,
+                  }),
+                )
+              }
+            >
+              {LANGUAGE_LEVELS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className={`${removeClass} sm:self-end sm:pb-2`}
+            disabled={disabled}
+            onClick={() => onChange(languages.filter((_, itemIndex) => itemIndex !== index))}
+          >
+            Quitar
+          </button>
+        </div>
+      ))}
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="grid grow gap-1 text-sm">
+          <span className="font-medium">Nuevo idioma</span>
+          <input
+            className={inputClass}
+            value={name}
+            disabled={disabled}
+            onChange={(event) => setName(event.target.value)}
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          <span className="font-medium">Nivel</span>
+          <select
+            className={inputClass}
+            value={level}
+            disabled={disabled}
+            aria-label="Nivel del idioma nuevo"
+            onChange={(event) => setLevel(event.target.value as LanguageLevel)}
+          >
+            {LANGUAGE_LEVELS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          className={buttonClass}
+          disabled={disabled || name.trim().length === 0}
+          onClick={() => {
+            onChange([...languages, { language: name.trim(), level }]);
+            setName("");
+          }}
+        >
+          Agregar
+        </button>
+      </div>
     </div>
   );
 }
@@ -585,6 +832,11 @@ function AddSkill({ disabled, onAdd }: { disabled: boolean; onAdd: (name: string
       </button>
     </div>
   );
+}
+
+function isSingleWordName(name: string): boolean {
+  const words = name.trim().split(/\s+/).filter((word) => word.length > 0);
+  return words.length === 1;
 }
 
 function replaceAt<T>(items: readonly T[], index: number, next: T): T[] {

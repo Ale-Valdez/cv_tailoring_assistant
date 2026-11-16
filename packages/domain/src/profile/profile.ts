@@ -8,6 +8,7 @@ import { blankToNull } from "../text.ts";
 import { contactSchema } from "./contact.ts";
 import { educationSchema } from "./education.ts";
 import { experienceSchema } from "./experience.ts";
+import { languageSkillSchema } from "./language-skill.ts";
 import { projectSchema } from "./project.ts";
 import { skillEntrySchema } from "./skill.ts";
 
@@ -21,6 +22,8 @@ const profileObjectSchema = z.strictObject({
   contact: contactSchema,
   summary: blankToNull,
   language: z.string().trim(),
+  spokenLanguages: z.array(languageSkillSchema),
+  displayLanguage: z.enum(["es", "en"]),
   experiences: z.array(experienceSchema),
   education: z.array(educationSchema),
   skills: z.array(skillEntrySchema),
@@ -59,6 +62,14 @@ function structuralProblems(profile: ProfileObject): string[] {
     }
     skillNames.add(key);
   }
+  const spokenNames = new Set<string>();
+  for (const spoken of profile.spokenLanguages) {
+    const key = spoken.language.toLowerCase();
+    if (spokenNames.has(key)) {
+      problems.push(`El idioma «${spoken.language}» está repetido.`);
+    }
+    spokenNames.add(key);
+  }
   return problems;
 }
 
@@ -91,12 +102,14 @@ function addProblems(
   }
 }
 
-export const profileSchema = profileObjectSchema.superRefine((profile, ctx) => {
+const profileCheckedSchema = profileObjectSchema.superRefine((profile, ctx) => {
   addProblems(ctx, structuralProblems(profile));
   if (profile.status === "confirmed") {
     addProblems(ctx, readinessProblems(profile));
   }
 });
+
+export const profileSchema = z.preprocess(normalizeProfileDocument, profileCheckedSchema);
 
 export type Profile = z.infer<typeof profileSchema>;
 
@@ -119,6 +132,8 @@ export function confirmProfile(profile: Profile): ConfirmedProfile {
     contact: profile.contact,
     summary: profile.summary,
     language: profile.language,
+    spokenLanguages: profile.spokenLanguages,
+    displayLanguage: profile.displayLanguage,
     experiences: profile.experiences,
     education: profile.education,
     skills: profile.skills,
@@ -132,11 +147,35 @@ export function profileForModel(profile: Profile): ProfileForModel {
     status: profile.status,
     summary: profile.summary,
     language: profile.language,
+    spokenLanguages: profile.spokenLanguages,
+    displayLanguage: profile.displayLanguage,
     experiences: profile.experiences,
     education: profile.education,
     skills: profile.skills,
     projects: profile.projects,
   };
+}
+
+function normalizeProfileDocument(value: unknown): unknown {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return value;
+  }
+  const record = { ...(value as Record<string, unknown>) };
+  if (record.spokenLanguages === undefined) {
+    record.spokenLanguages = [];
+  }
+  if (record.displayLanguage === undefined || record.displayLanguage === null || record.displayLanguage === "") {
+    const language = typeof record.language === "string" ? record.language.trim().toLowerCase() : "";
+    record.displayLanguage = language.startsWith("en") ? "en" : "es";
+  }
+  if (typeof record.contact === "object" && record.contact !== null && !Array.isArray(record.contact)) {
+    const contact = { ...(record.contact as Record<string, unknown>) };
+    if (contact.photo === undefined || contact.photo === "") {
+      contact.photo = null;
+    }
+    record.contact = contact;
+  }
+  return record;
 }
 
 export function listBulletIds(profile: ProfileForModel): ReadonlySet<BulletId> {

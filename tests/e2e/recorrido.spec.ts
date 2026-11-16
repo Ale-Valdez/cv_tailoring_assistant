@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 
 test("recorre importar, confirmar, analizar, aceptar y descargar", async ({ page }) => {
   await page.goto("/");
+  await expect(page).toHaveURL(/\/perfil$/);
   await expect(page.getByText("API disponible.")).toBeVisible();
 
   await page.getByRole("button", { name: "Entiendo, continuar" }).click();
@@ -21,12 +22,16 @@ test("recorre importar, confirmar, analizar, aceptar y descargar", async ({ page
   await page.getByRole("button", { name: "Confirmar perfil" }).click();
   await expect(page.getByText("Perfil confirmado y guardado.")).toBeVisible();
 
+  await page.getByRole("link", { name: "Oferta", exact: true }).click();
+  await expect(page).toHaveURL(/\/oferta$/);
   await page.getByLabel("Texto de la oferta").fill("Buscamos experiencia con TypeScript.");
   await page.getByRole("button", { name: "Analizar", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Backend" })).toBeVisible();
   await expect(page.getByText("Experiencia con TypeScript", { exact: true })).toBeVisible();
   await expect(page.getByText("Cubierto", { exact: true })).toBeVisible();
 
+  await page.getByRole("link", { name: "Revisión", exact: true }).click();
+  await expect(page).toHaveURL(/\/revision$/);
   await page.getByRole("button", { name: "Proponer cambios" }).click();
   await expect(page.getByText("Nombra el servicio sin agregar herramientas.")).toBeVisible();
   await page.getByRole("button", { name: "Aceptar", exact: true }).click();

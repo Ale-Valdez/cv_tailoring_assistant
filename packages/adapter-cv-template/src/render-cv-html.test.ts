@@ -194,4 +194,95 @@ describe("createCvHtmlRenderer", () => {
 
     expect(html).toContain("Docker, TypeScript.");
   });
+
+  it("imprime los idiomas hablados con el nivel en palabras", () => {
+    const html = renderer.render(
+      profile({
+        spokenLanguages: [
+          { language: "Español", level: "native" },
+          { language: "Inglés", level: "B1" },
+        ],
+      }),
+    );
+
+    expect(html).toContain("<h2>Idiomas</h2>");
+    expect(html).toContain("Español · Nativo");
+    expect(html).toContain("Inglés · B1 · Intermedio");
+  });
+
+  it("cambia rótulos y meses al idioma del CV y deja el texto como está", () => {
+    const html = renderer.render(
+      profile({
+        language: "es",
+        displayLanguage: "en",
+        spokenLanguages: [{ language: "Español", level: "native" }],
+      }),
+    );
+
+    expect(html).toContain('lang="en"');
+    expect(html).toContain("<h2>Professional profile</h2>");
+    expect(html).toContain("January 2020 – Present");
+    expect(html).toContain("<h2>Languages</h2>");
+    expect(html).toContain("Español · Native");
+    expect(html).toContain("Mantuve APIs en TypeScript.");
+    expect(html).not.toContain("Experiencia profesional");
+  });
+
+  it("pone un icono junto al teléfono, el email, la ubicación y los enlaces", () => {
+    const html = renderer.render(
+      profile({
+        contact: {
+          name: "Ada Lovelace",
+          email: "ada@example.com",
+          phone: "+54 11 0000 0000",
+          location: "Buenos Aires",
+          links: [
+            { label: "LinkedIn", url: "https://www.linkedin.com/in/ada" },
+            { label: "Instagram", url: "https://instagram.com/ada" },
+            { label: "WhatsApp", url: "https://wa.me/5491100000000" },
+            { label: "GitHub", url: "https://github.com/ada" },
+            { label: "Web", url: "https://example.com" },
+          ],
+          photo: null,
+        },
+      }),
+    );
+
+    expect(html).toContain('data-icon="phone"');
+    expect(html).toContain('data-icon="email"');
+    expect(html).toContain('data-icon="location"');
+    expect(html).toContain('data-icon="linkedin"');
+    expect(html).toContain('data-icon="instagram"');
+    expect(html).toContain('data-icon="whatsapp"');
+    expect(html).toContain('data-icon="github"');
+    expect(html).toContain('data-icon="link"');
+    expect(html).toContain("+54 11 0000 0000");
+    expect(html).toContain("ada@example.com");
+    expect(html).toContain("linkedin.com/in/ada");
+    expect(html).toContain(">Web</a>");
+  });
+
+  it("muestra la foto circular y no reserva hueco si no hay", () => {
+    const photo =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    const withPhoto = renderer.render(
+      profile({
+        contact: {
+          name: "Ada Lovelace",
+          email: null,
+          phone: null,
+          location: null,
+          links: [],
+          photo,
+        },
+      }),
+    );
+    expect(withPhoto).toContain("<img class=\"photo\"");
+    expect(withPhoto).toContain("border-radius: 50%");
+    expect(withPhoto).toContain(photo);
+
+    const withoutPhoto = renderer.render(profile());
+    expect(withoutPhoto).not.toContain("<img");
+    expect(withoutPhoto).not.toContain('<header class="with-photo">');
+  });
 });

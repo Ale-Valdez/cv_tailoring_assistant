@@ -37,12 +37,14 @@ export function ApiStatus() {
   }, []);
 
   if (status.state === "loading") {
-    return <p className="text-neutral-500">Comprobando la API…</p>;
+    return <p className="text-sm text-neutral-500">Comprobando la API…</p>;
   }
 
   if (status.state === "error") {
-    return <p className="text-red-700">{status.message}</p>;
+    return (
+      <p className="max-w-xs rounded-full bg-red-50 px-3 py-1 text-right text-sm text-red-800">{status.message}</p>
+    );
   }
 
-  return <p className="text-emerald-700">API disponible.</p>;
+  return <p className="rounded-full bg-emerald-50 px-3 py-1 text-sm text-emerald-800">API disponible.</p>;
 }

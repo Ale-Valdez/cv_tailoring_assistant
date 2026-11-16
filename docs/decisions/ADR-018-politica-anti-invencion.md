@@ -17,3 +17,5 @@ La regla de negocio es no inventar experiencia. El LLM puede reformular un bulle
 - El usuario puede completar el perfil con una habilidad real omitida por el PDF, y esa habilidad queda distinguible de las extraídas.
 - Una sugerencia que se apoya en una habilidad declarada es válida. Una que introduce un término sin esa marca, no.
 - El guard se prueba con casos fijos, sin modelo.
+- La Fase 4.4 del plan de auditoría (ADR-028) permite, como única excepción, una frase de la tabla de categorías cuando un bullet citado tiene la evidencia de esa fila. No permite otro producto, ni una cifra, una empresa o una fecha que el perfil no tiene.
+- La Fase 6.1 (ADR-030) permite reordenar los bullets de un empleo o de un proyecto. El texto de cada bullet queda igual.

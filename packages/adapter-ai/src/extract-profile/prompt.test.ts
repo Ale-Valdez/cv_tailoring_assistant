@@ -8,6 +8,8 @@ describe("buildExtractProfilePrompt", () => {
     expect(first.system).toContain("sin traducir");
     expect(first.system).toContain("No inventes");
     expect(first.system).toContain("email");
+    expect(first.system).toContain("empleos o proyectos distintos");
+    expect(first.system).toContain("va únicamente en skills");
     expect(first.user).toBe("Experiencia en TypeScript desde 2020.");
 
     const retry = buildExtractProfilePrompt("Experiencia en TypeScript desde 2020.", "end: fecha inválida");

@@ -53,6 +53,12 @@ describe("buildProposeTailoringPrompt", () => {
     expect(first.system).toContain("sin inventar");
     expect(first.system).toContain("no traduzcas");
     expect(first.system).toContain("ids exactos");
+    expect(first.system).toContain("no gana tareas, alcance ni resultados");
+    expect(first.system).toContain("alias equivalente");
+    expect(first.system).toContain("bullet_order");
+    expect(first.system).toContain("ownerId");
+    expect(first.system).toContain("un texto por línea, con los mismos textos");
+    expect(first.system).toContain("los excluyentes van antes");
     expect(first.user).toContain("33333333-3333-4333-8333-333333333333");
     expect(first.user).not.toContain("ada@example.com");
     expect(first.user).not.toContain("0000");

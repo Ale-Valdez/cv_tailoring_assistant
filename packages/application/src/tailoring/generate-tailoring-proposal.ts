@@ -1,4 +1,5 @@
 import {
+  bulletOrderContainer,
   checkFabrication,
   createSuggestionId,
   createTailoredCvId,
@@ -160,6 +161,10 @@ function beforeText(profile: ConfirmedProfile, target: SuggestionTarget): string
   if (target.type === "skill_order") {
     return profile.skills.map((skill) => skill.name).join("\n");
   }
+  if (target.type === "bullet_order") {
+    const container = bulletOrderContainer(profile, target.owner);
+    return container === null ? null : container.bullets.map((bullet) => bullet.text).join("\n");
+  }
   for (const experience of profile.experiences) {
     const bullet = experience.bullets.find((item) => item.id === target.bulletId);
     if (bullet !== undefined) {
@@ -178,6 +183,12 @@ function beforeText(profile: ConfirmedProfile, target: SuggestionTarget): string
 function targetKey(target: SuggestionTarget): string {
   if (target.type === "bullet") {
     return `bullet:${target.bulletId}`;
+  }
+  if (target.type === "bullet_order") {
+    const owner = target.owner;
+    return owner.type === "experience"
+      ? `bullet_order:experience:${owner.experienceId}`
+      : `bullet_order:project:${owner.projectId}`;
   }
   return target.type;
 }

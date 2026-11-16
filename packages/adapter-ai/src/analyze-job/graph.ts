@@ -20,6 +20,8 @@ export interface JobStructurer {
 
 const ANALYSIS_FAILED = "No se pudo analizar la oferta.";
 
+
+
 export async function runAnalyzeJobGraph(rawText: string, structurer: JobStructurer): Promise<ParsedExtractedJob> {
   let lastProblem: unknown = null;
   const graph = new StateGraph(AnalyzeState)
@@ -58,14 +60,14 @@ export async function runAnalyzeJobGraph(rawText: string, structurer: JobStructu
       return END;
     })
     .compile();
-
+    //graph.getGraphViz();
   const result = await graph.invoke({
     rawText,
     previousError: null,
     attemptsLeft: ANALYZE_JOB_MAX_ATTEMPTS,
     job: null,
   });
-
+  
   if (result.job === null) {
     throw new ApplicationError("analysis_failed", ANALYSIS_FAILED, lastProblem);
   }

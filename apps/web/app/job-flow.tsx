@@ -14,12 +14,14 @@ import {
 } from "@cv-tailor/contracts";
 import { useEffect, useState } from "react";
 
+import Link from "next/link";
+
 import { messageFromUnknown, readApiError } from "./api-error";
 import { analyzeLabel, matchLabel, type JobActivity } from "./job-activity";
 import { ProposalPanel } from "./proposal-panel";
 
 const KIND = { technical: "Técnico", functional: "Funcional" } as const;
-const PRIORITY = { required: "Obligatorio", preferred: "Deseable" } as const;
+const PRIORITY = { required: "Obligatorio", preferred: "Deseable", unspecified: "Sin especificar" } as const;
 const STATUS = { covered: "Cubierto", partial: "Parcial", gap: "Brecha" } as const;
 
 type Ready = {
@@ -37,9 +39,14 @@ type Ready = {
   previewError: string | null;
 };
 
-type Flow = { phase: "loading" } | { phase: "error"; message: string } | Ready;
+type Flow =
+  | { phase: "loading" }
+  | { phase: "error"; message: string }
+  | { phase: "needs-profile" }
+  | { phase: "needs-job" }
+  | Ready;
 
-export function JobFlow() {
+export function JobFlow({ view }: { view: "offer" | "review" }) {
   const [attempt, setAttempt] = useState(0);
   const [flow, setFlow] = useState<Flow>({ phase: "loading" });
 
@@ -54,11 +61,26 @@ export function JobFlow() {
           throw new Error(await readApiError(privacyResponse));
         }
         const privacy = privacyResponseSchema.parse(await privacyResponse.json());
+        const profile = await fetch("/api/profiles/current", { signal: controller.signal });
+        if (!active) {
+          return;
+        }
+        if (profile.status === 404) {
+          setFlow({ phase: "needs-profile" });
+          return;
+        }
+        if (!profile.ok) {
+          throw new Error(await readApiError(profile));
+        }
         const current = await fetch("/api/jobs/current", { signal: controller.signal });
         if (!active) {
           return;
         }
         if (current.status === 404) {
+          if (view === "review") {
+            setFlow({ phase: "needs-job" });
+            return;
+          }
           setFlow({
             phase: "ready",
             privacy,
@@ -80,8 +102,9 @@ export function JobFlow() {
         }
         const job = jobPostingSchema.parse(await current.json());
         const coverage = await loadMatch(job.id);
-        const proposal = await loadProposal(job.id);
-        const preview = proposal === null ? { previewHtml: null, previewError: null } : await readPreview(job.id);
+        const proposal = view === "review" ? await loadProposal(job.id) : null;
+        const preview =
+          proposal === null ? { previewHtml: null, previewError: null } : await readPreview(job.id);
         if (!active) {
           return;
         }
@@ -114,17 +137,41 @@ export function JobFlow() {
       active = false;
       controller.abort();
     };
-  }, [attempt]);
+  }, [attempt, view]);
 
   if (flow.phase === "loading") {
-    return <p className="text-neutral-500">Cargando la oferta…</p>;
+    return <p className="text-neutral-500">{view === "review" ? "Cargando la revisión…" : "Cargando la oferta…"}</p>;
+  }
+
+  if (flow.phase === "needs-profile") {
+    return (
+      <MissingStep
+        message={
+          view === "offer"
+            ? "Confirmá el perfil para analizar una oferta."
+            : "Confirmá el perfil para revisar los cambios."
+        }
+        href="/perfil"
+        action="Ir al perfil"
+      />
+    );
+  }
+
+  if (flow.phase === "needs-job" || (view === "review" && flow.phase === "ready" && flow.job === null)) {
+    return (
+      <MissingStep
+        message="Analizá una oferta para revisar los cambios."
+        href="/oferta"
+        action="Ir a la oferta"
+      />
+    );
   }
 
   if (flow.phase === "error") {
     return (
       <div className="flex flex-col gap-3">
         <p className="text-red-700" role="alert">
-          No se pudo preparar la oferta ({flow.message}).
+          No se pudo preparar {view === "review" ? "la revisión" : "la oferta"} ({flow.message}).
         </p>
         <button
           type="button"
@@ -140,6 +187,52 @@ export function JobFlow() {
     );
   }
   
+  if (view === "review") {
+    if (flow.job === null) {
+      return (
+        <MissingStep
+          message="Analizá una oferta para revisar los cambios."
+          href="/oferta"
+          action="Ir a la oferta"
+        />
+      );
+    }
+    return (
+      <section className="flex flex-col gap-6">
+        <p className="text-sm text-neutral-600">
+          {[flow.job.title ?? "Oferta sin título", flow.job.company, flow.job.language]
+            .filter((part) => part !== null && part.length > 0)
+            .join(" · ") || "Sin empresa ni idioma"}
+        </p>
+        {flow.match?.languageNotice ? (
+          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+            {flow.match.languageNotice}
+          </p>
+        ) : null}
+        <ProposalPanel
+          proposal={flow.proposal}
+          previewHtml={flow.previewHtml}
+          previewError={flow.previewError}
+          activity={flow.activity}
+          error={flow.proposalError}
+          canPropose={flow.match !== null}
+          onPropose={() => {
+            void propose(flow, setFlow);
+          }}
+          onReview={(suggestionId, body) => {
+            void review(flow, setFlow, suggestionId, body);
+          }}
+          onExport={() => {
+            void exportPdf(flow, setFlow);
+          }}
+          onDownload={(exportId) => {
+            void downloadExport(flow, setFlow, exportId);
+          }}
+        />
+      </section>
+    );
+  }
+
   return (
     <section className="flex flex-col gap-6">
       <form
@@ -181,38 +274,24 @@ export function JobFlow() {
           {analyzeLabel(flow.activity)}
         </button>
       </form>
-      {flow.job ? (
-        <>
-          <JobReport
-            job={flow.job}
-            match={flow.match}
-            matchNotice={flow.matchNotice}
-            activity={flow.activity}
-            onRefresh={() => {
-              void refreshMatch(flow, setFlow);
-            }}
+      {flow.activity?.kind === "analyze" ? (
+        <p role="status" className="flex items-center gap-3 text-sm text-neutral-700">
+          <span
+            className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-900"
+            aria-hidden="true"
           />
-          <ProposalPanel
-            proposal={flow.proposal}
-            previewHtml={flow.previewHtml}
-            previewError={flow.previewError}
-            activity={flow.activity}
-            error={flow.proposalError}
-            canPropose={flow.match !== null}
-            onPropose={() => {
-              void propose(flow, setFlow);
-            }}
-            onReview={(suggestionId, body) => {
-              void review(flow, setFlow, suggestionId, body);
-            }}
-            onExport={() => {
-              void exportPdf(flow, setFlow);
-            }}
-            onDownload={(exportId) => {
-              void downloadExport(flow, setFlow, exportId);
-            }}
-          />
-        </>
+          Analizando la oferta…
+        </p>
+      ) : flow.job ? (
+        <JobReport
+          job={flow.job}
+          match={flow.match}
+          matchNotice={flow.matchNotice}
+          activity={flow.activity}
+          onRefresh={() => {
+            void refreshMatch(flow, setFlow);
+          }}
+        />
       ) : null}
     </section>
   );
@@ -231,6 +310,7 @@ function JobReport({
   activity: JobActivity | null;
   onRefresh: () => void;
 }) {
+  const [tab, setTab] = useState<"requirements" | "keywords">("requirements");
   const evidence = new Map(match?.citedBullets.map((bullet) => [bullet.bulletId, bullet.text]) ?? []);
   const results = new Map(match?.matchResults.map((result) => [result.requirementId, result]) ?? []);
   const counts = countResults(match);
@@ -248,6 +328,11 @@ function JobReport({
           {match.languageNotice}
         </p>
       ) : null}
+      {match?.linksNotice ? (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+          {match.linksNotice}
+        </p>
+      ) : null}
       {matchNotice ? <p className="text-sm text-neutral-700">{matchNotice}</p> : null}
       <button
         type="button"
@@ -258,10 +343,19 @@ function JobReport({
         {matchLabel(activity)}
       </button>
       {counts ? (
-        <p className="text-sm text-neutral-700">
+        <p className="text-sm font-medium text-neutral-800">
           {counts.covered} cubiertos, {counts.partial} parciales, {counts.gap} brechas.
         </p>
       ) : null}
+      <div role="tablist" aria-label="Informe de la oferta" className="flex gap-1 border-b border-neutral-200">
+        <ReportTab selected={tab === "requirements"} onSelect={() => setTab("requirements")}>
+          Requisitos
+        </ReportTab>
+        <ReportTab selected={tab === "keywords"} onSelect={() => setTab("keywords")}>
+          Keywords
+        </ReportTab>
+      </div>
+      {tab === "requirements" ? (
       <section className="flex flex-col gap-3">
         <h3 className="font-medium">Requisitos</h3>
         {job.requirements.length === 0 ? <p className="text-sm text-neutral-600">La oferta no trajo requisitos.</p> : null}
@@ -289,6 +383,7 @@ function JobReport({
           })}
         </ul>
       </section>
+      ) : (
       <section className="flex flex-col gap-3">
         <h3 className="font-medium">Keywords</h3>
         {job.keywords.length === 0 ? <p className="text-sm text-neutral-600">La oferta no trajo keywords.</p> : null}
@@ -324,7 +419,45 @@ function JobReport({
           })}
         </ul>
       </section>
+      )}
     </div>
+  );
+}
+
+function ReportTab({
+  selected,
+  onSelect,
+  children,
+}: {
+  selected: boolean;
+  onSelect: () => void;
+  children: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={selected}
+      className={
+        selected
+          ? "-mb-px border-b-2 border-neutral-900 px-3 py-2 text-sm font-medium"
+          : "-mb-px border-b-2 border-transparent px-3 py-2 text-sm text-neutral-600"
+      }
+      onClick={onSelect}
+    >
+      {children}
+    </button>
+  );
+}
+
+function MissingStep({ message, href, action }: { message: string; href: string; action: string }) {
+  return (
+    <section className="flex flex-col gap-4 rounded-lg border border-neutral-200 bg-white p-5">
+      <p className="text-sm leading-6 text-neutral-700">{message}</p>
+      <Link href={href} className="w-fit rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
+        {action}
+      </Link>
+    </section>
   );
 }
 

@@ -84,10 +84,21 @@ function targetKey(target: ProposedSuggestion["target"]): string {
   if (target.type === "bullet") {
     return `bullet:${target.bulletId}`;
   }
+  if (target.type === "bullet_order") {
+    const owner = target.owner;
+    return owner.type === "experience"
+      ? `bullet_order:experience:${owner.experienceId}`
+      : `bullet_order:project:${owner.projectId}`;
+  }
   return target.type;
 }
 
 function formatRejection(suggestion: ProposedSuggestion, reasons: readonly string[]): string {
-  const label = suggestion.target.type === "bullet" ? `bullet ${suggestion.target.bulletId}` : suggestion.target.type;
+  const label =
+    suggestion.target.type === "bullet"
+      ? `bullet ${suggestion.target.bulletId}`
+      : suggestion.target.type === "bullet_order"
+        ? "orden de bullets"
+        : suggestion.target.type;
   return `${label}: ${reasons.join(" ")} Texto rechazado: ${suggestion.after}`;
 }

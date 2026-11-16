@@ -29,6 +29,7 @@ const report = {
   profileId: "11111111-1111-4111-8111-111111111111",
   jobPostingId: posting.id,
   languageNotice: null,
+  linksNotice: null,
   matchResults: [
     {
       id: "15151515-1515-4151-8151-151515151515",

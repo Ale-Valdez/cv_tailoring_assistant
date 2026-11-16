@@ -80,8 +80,11 @@ describe("importProfileFromPdf", () => {
       phone: null,
       location: null,
       links: [],
+      photo: null,
     });
     expect(profile.language).toBe("es");
+    expect(profile.spokenLanguages).toEqual([]);
+    expect(profile.displayLanguage).toBe("es");
     expect(profile.experiences[0]?.bullets.map((bullet) => bullet.text)).toEqual([
       "Mantuve APIs en TypeScript.",
     ]);

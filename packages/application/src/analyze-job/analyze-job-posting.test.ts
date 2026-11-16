@@ -109,6 +109,31 @@ describe("analyzeJobPosting", () => {
     expect(jobAnalyzer.calls).toHaveLength(0);
   });
 
+  // Fase 3 del plan de auditoría (ADR-027): el requisito cita la keyword por
+  // su término, y se resuelve al id final aunque el término sea un alias de
+  // diccionario distinto del canonical ya deduplicado («Postgres» -> «PostgreSQL»).
+  it("resuelve keywordTerms a keywordIds, incluso por alias, y descarta un término que no está en keywords", async () => {
+    const jobAnalyzer = analyzerReturning({
+      title: "Backend",
+      company: "Ejemplo",
+      language: "es",
+      requirements: [
+        {
+          text: "Mantener APIs en Postgres",
+          kind: "technical",
+          priority: "required",
+          keywordTerms: ["Postgres", "SQS"],
+        },
+      ],
+      keywords: [{ canonical: "PostgreSQL", aliases: ["Postgres"], frequency: 1, origin: "requisitos" }],
+    });
+    const jobPostings = memoryJobs();
+
+    const posting = await analyzeJobPosting({ jobAnalyzer, jobPostings }, "Buscamos a alguien con Postgres.");
+
+    expect(posting.requirements[0]?.keywordIds).toEqual([posting.keywords[0]?.id]);
+  });
+
   it("traduce un borrador inválido del analizador", async () => {
     const jobAnalyzer = analyzerReturning({
       ...extractedJob(),

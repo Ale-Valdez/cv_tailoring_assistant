@@ -16,7 +16,16 @@ export const modelJobSchema = z.object({
     z.object({
       text: z.string().describe("Requisito copiado de la oferta, sin inventar ni traducir."),
       kind: z.enum(["technical", "functional"]).describe("technical si pide una herramienta o conocimiento; functional si pide una responsabilidad."),
-      priority: z.enum(["required", "preferred"]).describe("preferred solo si la oferta lo marca como deseable, plus o no excluyente."),
+      priority: z
+        .enum(["required", "preferred", "unspecified"])
+        .describe(
+          "required solo si la oferta lo marca como excluyente u obligatorio. preferred solo si lo marca como deseable, plus o no excluyente. unspecified en cualquier otro caso.",
+        ),
+      keywordTerms: z
+        .array(z.string())
+        .describe(
+          "Términos canónicos, tal como los escribiste en keywords, que este requisito pide. Lista vacía si no nombra ninguna keyword. No inventes un término que no esté en keywords.",
+        ),
     }),
   ),
   keywords: z.array(
@@ -37,7 +46,11 @@ export const extractedJobSchema = z.object({
     z.object({
       text: z.string().trim().min(1, "El requisito necesita un texto."),
       kind: z.enum(["technical", "functional"]),
-      priority: z.enum(["required", "preferred"]),
+      priority: z.enum(["required", "preferred", "unspecified"]),
+      keywordTerms: z
+        .array(z.string().trim().min(1, "Un término de keywordTerms no puede estar vacío."))
+        .optional()
+        .default([]),
     }),
   ),
   keywords: z.array(

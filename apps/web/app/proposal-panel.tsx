@@ -3,6 +3,7 @@
 import type { ReviewSuggestionRequest, Suggestion, TailoredCv } from "@cv-tailor/contracts";
 import { useState } from "react";
 
+import { bulletOrderBlockLabel } from "./bullet-order-label";
 import { downloadLabel, exportLabel, proposeLabel, reviewLabel, type JobActivity } from "./job-activity";
 
 const STATUS = {
@@ -16,6 +17,7 @@ const TARGET = {
   summary: "Resumen",
   bullet: "Bullet",
   skill_order: "Orden de habilidades",
+  bullet_order: "Orden de bullets",
 } as const;
 
 export function ProposalPanel({
@@ -48,14 +50,18 @@ export function ProposalPanel({
         <h2 className="text-lg font-semibold">Sugerencias</h2>
         <p className="text-sm leading-6 text-neutral-700">
           La propuesta usa el perfil sin datos de contacto. Solo quedan los cambios que el perfil ya respalda: se
-          puede reformular, no agregar una herramienta, una empresa, una cifra o una fecha. Después aceptás, editás o
-          rechazás cada una. La vista previa muestra el CV con lo ya aceptado o editado.
+          puede reformular o reordenar los bullets de un empleo o de un proyecto, sin cambiar el texto ni agregar una
+          herramienta, una empresa, una cifra o una fecha. Después aceptás, editás o rechazás cada una. La vista previa
+          muestra el CV con lo ya aceptado o editado.
         </p>
       </header>
       {error ? (
         <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
           {error}
         </p>
+      ) : null}
+      {proposal !== null ? (
+        <ExportBox proposal={proposal} activity={activity} onExport={onExport} onDownload={onDownload} />
       ) : null}
       {canPropose ? (
         <button
@@ -84,9 +90,6 @@ export function ProposalPanel({
             />
           ))}
         </ul>
-      ) : null}
-      {proposal !== null ? (
-        <ExportBox proposal={proposal} activity={activity} onExport={onExport} onDownload={onDownload} />
       ) : null}
       </div>
       {proposal !== null ? <CvPreview html={previewHtml} error={previewError} /> : null}
@@ -144,7 +147,7 @@ function ExportBox({
 
 function CvPreview({ html, error }: { html: string | null; error: string | null }) {
   return (
-    <aside className="flex flex-col gap-2 lg:sticky lg:top-6 lg:self-start">
+    <aside className="flex flex-col gap-2 lg:sticky lg:top-20 lg:self-start">
       <h2 className="text-lg font-semibold">Vista previa</h2>
       <p className="text-sm leading-6 text-neutral-700">
         Es el mismo HTML que después se exporta. Se actualiza al aceptar, guardar una edición o rechazar. El texto del
@@ -188,6 +191,11 @@ function SuggestionCard({
     <li className="rounded-lg border border-neutral-200 p-4">
       <p className="flex flex-wrap gap-2 text-xs">
         <span className="rounded-full bg-neutral-100 px-2 py-1">{TARGET[suggestion.target.type]}</span>
+        {suggestion.target.type === "bullet_order" ? (
+          <span className="rounded-full bg-neutral-100 px-2 py-1">
+            {bulletOrderBlockLabel(cv, suggestion.target.owner)}
+          </span>
+        ) : null}
         <span className="rounded-full bg-neutral-100 px-2 py-1">{STATUS[suggestion.status]}</span>
       </p>
       <p className="mt-3 text-xs font-medium text-neutral-500">Antes</p>

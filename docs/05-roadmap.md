@@ -18,4 +18,6 @@ Estado: Fase 5 hecha. La Fase 0 dejó el monorepo, Compose (`web`, `api`, `rende
   - Sección 3 (hecha): [06-uso.md](06-uso.md) recorre el arranque (`.env`, `pnpm compose`, `pnpm db:migrate`) y el uso hasta descargar el PDF.
   - Sección 4 (hecha): `pnpm test:e2e` recorre la pantalla. `@playwright/test` queda en `tests/` y el paquete `playwright` sigue solo en `renderer` (ADR-016). `E2E_FIXTURES=true` reemplaza extractor, analizador y proponedor por respuestas fijas: la corrida no usa `OPENAI_API_KEY`. La base es `cv_tailor_e2e`. El PDF de la prueba lo responde el arnés. `pnpm check` y el CI no la ejecutan.
 
+El trabajo posterior a esta Fase 5 está en [07-plan-auditoria-matching.md](07-plan-auditoria-matching.md). No forma parte de las fases de este roadmap.
+
 La Fase 0 no dejó decisiones abiertas. Ya resueltas: D11 (OpenAI), D12 (política anti-invención, ADR-018), D13 (edición y vista previa, ADR-023), D14 (idioma, ADR-022), D15 (entrada del PDF, ADR-020), D16 (privacidad, ADR-019), D17 (plantilla, ADR-026), D18 (entrada de la oferta, ADR-021), D19 (Playwright, ADR-024), D20 (pnpm), D21 (Postgres), D22 (renderer separado), D23 (revisión humana), D24 (verificación de límites) y D25 (proxy con `rewrites`). Exportar con sugerencias pendientes quedó cerrado en ADR-025.

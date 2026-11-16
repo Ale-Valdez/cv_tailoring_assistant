@@ -41,6 +41,7 @@ export function createFixtureJobAnalyzer(): JobAnalyzer {
             text: FIXTURE_REQUIREMENT,
             kind: "technical",
             priority: "required",
+            keywordTerms: ["TypeScript"],
           },
         ],
         keywords: [{ canonical: "TypeScript", aliases: [], frequency: 1, origin: "requisitos" }],

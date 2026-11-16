@@ -47,6 +47,7 @@ function posting(): JobPosting {
         text: "Experiencia con TypeScript",
         kind: "technical",
         priority: "required",
+        keywordIds: [],
       },
     ],
     keywords: [

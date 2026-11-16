@@ -55,6 +55,69 @@ describe("parseJobPosting", () => {
     expect(posting.keywords[0]?.canonical).toBe("TypeScript");
   });
 
+  // Fase 3 del plan de auditoría (ADR-027): un documento guardado antes de
+  // esa fase no tiene `keywordIds` en sus requisitos.
+  it("normaliza un requisito sin keywordIds (documento guardado antes de la Fase 3) a una lista vacía", () => {
+    const input = postingInput();
+    const requirement = input.requirements[0] as Record<string, unknown>;
+    delete requirement.keywordIds;
+
+    const posting = parseJobPosting(input);
+
+    expect(posting.requirements[0]?.keywordIds).toEqual([]);
+  });
+
+  it("acepta un requisito que cita la keyword de la oferta", () => {
+    const posting = parseJobPosting(
+      postingInput({
+        requirements: [
+          { id: requirementId, text: "Mantener APIs", kind: "technical", priority: "required", keywordIds: [keywordId] },
+        ],
+      }),
+    );
+
+    expect(posting.requirements[0]?.keywordIds).toEqual([keywordId]);
+  });
+
+  it("rechaza un requisito que repite la misma keyword", () => {
+    const error = domainFailure(() =>
+      parseJobPosting(
+        postingInput({
+          requirements: [
+            {
+              id: requirementId,
+              text: "Mantener APIs",
+              kind: "technical",
+              priority: "required",
+              keywordIds: [keywordId, keywordId],
+            },
+          ],
+        }),
+      ),
+    );
+    expect(error.message).toContain("repetir la misma keyword");
+  });
+
+  it("rechaza un requisito que cita una keyword que no está en la oferta", () => {
+    const otherKeywordId = "16161616-1616-4161-8161-161616161616";
+    const error = domainFailure(() =>
+      parseJobPosting(
+        postingInput({
+          requirements: [
+            {
+              id: requirementId,
+              text: "Mantener APIs",
+              kind: "technical",
+              priority: "required",
+              keywordIds: [otherKeywordId],
+            },
+          ],
+        }),
+      ),
+    );
+    expect(error.message).toContain("solo puede citar keywords que están en la oferta");
+  });
+
   it("rechaza requisitos con el mismo id", () => {
     const requirement = postingInput().requirements[0];
     const error = domainFailure(() =>

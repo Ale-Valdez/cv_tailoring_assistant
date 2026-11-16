@@ -18,7 +18,7 @@ const jobPostingObjectSchema = z.strictObject({
   keywords: z.array(keywordSchema),
 });
 
-export const jobPostingSchema = jobPostingObjectSchema.superRefine((posting, ctx) => {
+const jobPostingCheckedSchema = jobPostingObjectSchema.superRefine((posting, ctx) => {
   if (repeatedValues(posting.requirements.map((item) => item.id)).length > 0) {
     ctx.addIssue({
       code: "custom",
@@ -41,9 +41,50 @@ export const jobPostingSchema = jobPostingObjectSchema.superRefine((posting, ctx
       path: ["keywords"],
     });
   }
+  const keywordIds = new Set(posting.keywords.map((item) => item.id));
+  posting.requirements.forEach((requirement, index) => {
+    if (repeatedValues(requirement.keywordIds).length > 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Un requisito no puede repetir la misma keyword.",
+        path: ["requirements", index, "keywordIds"],
+      });
+    }
+    if (requirement.keywordIds.some((keywordId) => !keywordIds.has(keywordId))) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Un requisito solo puede citar keywords que están en la oferta.",
+        path: ["requirements", index, "keywordIds"],
+      });
+    }
+  });
 });
 
+// Un documento guardado antes de la Fase 3 (ADR-027) no tiene `keywordIds` en
+// sus requisitos. Se normaliza a `[]` al leer, sin migración SQL.
+export const jobPostingSchema = z.preprocess(normalizeJobPostingDocument, jobPostingCheckedSchema);
+
 export type JobPosting = z.infer<typeof jobPostingSchema>;
+
+function normalizeJobPostingDocument(value: unknown): unknown {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return value;
+  }
+  const record = { ...(value as Record<string, unknown>) };
+  if (Array.isArray(record.requirements)) {
+    record.requirements = record.requirements.map((requirement) => {
+      if (typeof requirement !== "object" || requirement === null || Array.isArray(requirement)) {
+        return requirement;
+      }
+      const requirementRecord = { ...(requirement as Record<string, unknown>) };
+      if (requirementRecord.keywordIds === undefined) {
+        requirementRecord.keywordIds = [];
+      }
+      return requirementRecord;
+    });
+  }
+  return record;
+}
 
 export function parseJobPosting(value: unknown): JobPosting {
   return parseSchema(jobPostingSchema, value);

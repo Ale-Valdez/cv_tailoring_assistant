@@ -186,3 +186,179 @@ describe("profileForRender", () => {
     expect(error.message).toBe("La sugerencia apunta a un bullet que no está en el perfil.");
   });
 });
+
+describe("Fase 6.1 - profileForRender reordena bullets", () => {
+  const bulletNode = "61616161-6161-4161-8161-616161616161";
+  const projectSecond = "62626262-6262-4262-8262-626262626262";
+  const secondSuggestionId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  const react = "Mantuve APIs en TypeScript.";
+  const node = "Diseñé el esquema en PostgreSQL.";
+
+  function profileWithBullets(): ConfirmedProfile {
+    return confirmProfile(
+      parseProfile({
+        ...sampleConfirmedProfile(),
+        status: "needs_review",
+        experiences: [
+          {
+            id: sampleIds.experience,
+            organization: "Analytical Engines",
+            role: "Desarrolladora",
+            span: { start: "2020-01", end: null, ongoing: true },
+            location: null,
+            bullets: [
+              { id: sampleIds.bullet, text: react },
+              { id: bulletNode, text: node },
+            ],
+          },
+        ],
+        projects: [
+          {
+            id: sampleIds.project,
+            name: "Motor analítico",
+            description: null,
+            url: null,
+            bullets: [
+              { id: sampleIds.projectBullet, text: "Modelé el cálculo." },
+              { id: projectSecond, text: "Publiqué el tablero." },
+            ],
+          },
+        ],
+      }),
+    );
+  }
+
+  function cvWith(snapshot: ConfirmedProfile, suggestions: Record<string, unknown>[]): TailoredCv {
+    return parseTailoredCv({
+      id: tailoredCvId,
+      profileId: snapshot.id,
+      jobPostingId,
+      status: "in_review",
+      snapshot,
+      suggestions: suggestions.map((suggestion, index) => ({
+        id: index === 0 ? suggestionId : secondSuggestionId,
+        reason: "Sube lo que la oferta pide.",
+        evidence: [{ type: "bullet", bulletId: sampleIds.bullet }],
+        status: "accepted",
+        validation: { outcome: "valid" },
+        ...suggestion,
+      })),
+      matchResults: [],
+      exports: [],
+    });
+  }
+
+  it("reordena los bullets de un empleo y conserva id y texto", () => {
+    const snapshot = profileWithBullets();
+    const rendered = profileForRender(
+      cvWith(snapshot, [
+        {
+          target: { type: "bullet_order", owner: { type: "experience", experienceId: sampleIds.experience } },
+          before: `${react}\n${node}`,
+          after: `diseñé el esquema en postgresql.\n${react}`,
+        },
+      ]),
+    );
+
+    expect(rendered.experiences[0]?.bullets.map((bullet) => bullet.id)).toEqual([bulletNode, sampleIds.bullet]);
+    expect(rendered.experiences[0]?.bullets.map((bullet) => bullet.text)).toEqual([node, react]);
+    expect(snapshot.experiences[0]?.bullets.map((bullet) => bullet.id)).toEqual([sampleIds.bullet, bulletNode]);
+  });
+
+  it("reordena los bullets de un proyecto", () => {
+    const rendered = profileForRender(
+      cvWith(profileWithBullets(), [
+        {
+          target: { type: "bullet_order", owner: { type: "project", projectId: sampleIds.project } },
+          before: "Modelé el cálculo.\nPubliqué el tablero.",
+          after: "Publiqué el tablero.\nModelé el cálculo.",
+          evidence: [{ type: "bullet", bulletId: sampleIds.projectBullet }],
+        },
+      ]),
+    );
+
+    expect(rendered.projects[0]?.bullets.map((bullet) => bullet.text)).toEqual([
+      "Publiqué el tablero.",
+      "Modelé el cálculo.",
+    ]);
+    expect(rendered.projects[0]?.bullets.map((bullet) => bullet.id)).toEqual([projectSecond, sampleIds.projectBullet]);
+  });
+
+  it("conserva el texto reescrito al reordenar, en cualquier orden de aplicación", () => {
+    const snapshot = profileWithBullets();
+    const rewrite = {
+      target: { type: "bullet", bulletId: sampleIds.bullet },
+      before: react,
+      after: "Mantuve APIs en TypeScript para el servicio.",
+    };
+    const reorder = {
+      target: { type: "bullet_order", owner: { type: "experience", experienceId: sampleIds.experience } },
+      before: `${react}\n${node}`,
+      after: `${node}\n${react}`,
+    };
+    for (const suggestions of [
+      [rewrite, reorder],
+      [reorder, rewrite],
+    ]) {
+      const rendered = profileForRender(cvWith(snapshot, suggestions));
+      expect(rendered.experiences[0]?.bullets.map((bullet) => bullet.id)).toEqual([bulletNode, sampleIds.bullet]);
+      expect(rendered.experiences[0]?.bullets.map((bullet) => bullet.text)).toEqual([
+        node,
+        "Mantuve APIs en TypeScript para el servicio.",
+      ]);
+    }
+  });
+
+  it("deja el orden original si la sugerencia está pendiente", () => {
+    const rendered = profileForRender(
+      cvWith(profileWithBullets(), [
+        {
+          target: { type: "bullet_order", owner: { type: "experience", experienceId: sampleIds.experience } },
+          before: `${react}\n${node}`,
+          after: `${node}\n${react}`,
+          status: "pending",
+        },
+      ]),
+    );
+    expect(rendered.experiences[0]?.bullets.map((bullet) => bullet.id)).toEqual([sampleIds.bullet, bulletNode]);
+  });
+
+  it("rechaza un orden que no es el de los bullets del perfil", () => {
+    const error = domainFailure(() =>
+      profileForRender(
+        cvWith(profileWithBullets(), [
+          {
+            target: { type: "bullet_order", owner: { type: "experience", experienceId: sampleIds.experience } },
+            before: `${react}\n${node}`,
+            after: `${react}\nDiseñé el esquema en Kubernetes.`,
+          },
+        ]),
+      ),
+    );
+    expect(error.message).toBe("El orden de bullets no coincide con el perfil.");
+  });
+
+  it("rechaza un empleo que no está en la instantánea", () => {
+    const cv = cvWith(profileWithBullets(), [
+      {
+        target: { type: "bullet_order", owner: { type: "experience", experienceId: sampleIds.experience } },
+        before: `${react}\n${node}`,
+        after: `${node}\n${react}`,
+      },
+    ]);
+    const broken = {
+      ...cv,
+      suggestions: [
+        {
+          ...cv.suggestions[0],
+          target: {
+            type: "bullet_order" as const,
+            owner: { type: "experience" as const, experienceId: "71717171-7171-4171-8171-717171717171" },
+          },
+        },
+      ],
+    };
+    const error = domainFailure(() => profileForRender(broken as TailoredCv));
+    expect(error.message).toBe("La sugerencia apunta a un empleo que no está en el perfil.");
+  });
+});

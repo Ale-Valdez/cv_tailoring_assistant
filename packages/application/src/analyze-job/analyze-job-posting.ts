@@ -7,6 +7,7 @@ import {
   normalizeKeywordDrafts,
   parseJobPosting,
   type JobPosting,
+  type KeywordId,
 } from "@cv-tailor/domain";
 
 import { ApplicationError } from "../errors.ts";
@@ -52,6 +53,13 @@ export async function analyzeJobPosting(deps: AnalyzeJobPostingDeps, rawText: st
 }
 
 function postingFromExtraction(text: string, contentHash: string, extracted: ExtractedJobContent): JobPosting {
+  const keywords = normalizeKeywordDrafts(extracted.keywords).map((keyword) => ({
+    id: createKeywordId(),
+    canonical: keyword.canonical,
+    aliases: keyword.aliases,
+    frequency: keyword.frequency,
+    origin: keyword.origin,
+  }));
   return parseJobPosting({
     id: createJobPostingId(),
     rawText: text,
@@ -64,15 +72,36 @@ function postingFromExtraction(text: string, contentHash: string, extracted: Ext
       text: requirement.text,
       kind: requirement.kind,
       priority: requirement.priority,
+      keywordIds: resolveKeywordIds(requirement.keywordTerms ?? [], keywords),
     })),
-    keywords: normalizeKeywordDrafts(extracted.keywords).map((keyword) => ({
-      id: createKeywordId(),
-      canonical: keyword.canonical,
-      aliases: keyword.aliases,
-      frequency: keyword.frequency,
-      origin: keyword.origin,
-    })),
+    keywords,
   });
+}
+
+// Fase 3 (ADR-027): el modelo cita una keyword de este requisito por su
+// término (canónico o alias). Se resuelve contra la lista ya deduplicada,
+// así que un alias conocido por el diccionario (p.ej. «Postgres») resuelve a
+// la keyword final («PostgreSQL») aunque el modelo no haya usado ese nombre.
+// Un término que no está en `keywords` se descarta: no se inventa una
+// keyword nueva solo porque la citó un requisito.
+function resolveKeywordIds(
+  terms: readonly string[],
+  keywords: readonly { id: KeywordId; canonical: string; aliases: readonly string[] }[],
+): KeywordId[] {
+  const ids: KeywordId[] = [];
+  for (const term of terms) {
+    const folded = foldTerm(term);
+    if (folded.length === 0) {
+      continue;
+    }
+    const match = keywords.find(
+      (keyword) => foldTerm(keyword.canonical) === folded || keyword.aliases.some((alias) => foldTerm(alias) === folded),
+    );
+    if (match !== undefined && !ids.includes(match.id)) {
+      ids.push(match.id);
+    }
+  }
+  return ids;
 }
 
 function uniqueRequirements(requirements: readonly ExtractedRequirement[]): ExtractedRequirement[] {

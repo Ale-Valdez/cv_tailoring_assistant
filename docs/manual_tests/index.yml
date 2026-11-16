@@ -1,0 +1,20 @@
+# Documentos de esta carpeta para la revisión del flujo de análisis y adaptación.
+# `usar: true` incluye el archivo. `usar: false` lo deja fuera.
+documentos:
+  - archivo: informe_tecnico_cv_tailor_cursor.md
+    usar: true
+    nota: Recomendaciones para auditar prompts, matching y propuestas sin inventar experiencia.
+
+  - archivo: informe_de_auditor_a_ats_e_ia_generador_de_cvs.md
+    usar: true
+    nota: >
+      Caso FinPulse. Pide traducir el CV al idioma de la oferta, agrupar habilidades
+      y reescribir logros. Eso choca con ADR-022, ADR-026 y la regla de no inventar.
+
+  - archivo: informe_auditoria_ats_ia_fullstack_latam.md
+    usar: true
+    nota: >
+      Caso Full Stack LATAM (oferta y CV en español). Mismo CV que el caso FinPulse
+      aplicado a otra oferta: confirma que los gaps de keywords (TypeScript, testing,
+      SOLID/hexagonal) y el orden de bullets son del perfil maestro/motor, no de una
+      oferta puntual. Señala además un posible bug de encabezado (nombre sin apellido).

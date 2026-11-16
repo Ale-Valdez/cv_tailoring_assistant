@@ -8,6 +8,10 @@ describe("buildAnalyzeJobPrompt", () => {
     expect(first.system).toContain("sin traducir");
     expect(first.system).toContain("sin agregar exigencias");
     expect(first.system).toContain("tecnologías parecidas");
+    expect(first.system).toContain("en un solo ítem");
+    expect(first.system).toContain("cómo aplicar");
+    expect(first.system).toContain("unspecified");
+    expect(first.system).toContain("keywordTerms");
     expect(first.user).toBe("Buscamos a alguien con PostgreSQL.");
 
     const retry = buildAnalyzeJobPrompt("Buscamos a alguien con PostgreSQL.", "kind: valor inválido");

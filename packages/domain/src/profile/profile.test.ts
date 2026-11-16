@@ -218,6 +218,102 @@ describe("profileForModel", () => {
     expect(model.summary).toContain("TypeScript");
     expect(model.experiences).toHaveLength(1);
   });
+
+  it("lleva los idiomas hablados y no la foto", () => {
+    const photo = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    const profile = parseProfile(
+      emptyProfile({
+        contact: {
+          name: "Ada",
+          email: "ada@example.com",
+          phone: null,
+          location: null,
+          links: [],
+          photo,
+        },
+        language: "es",
+        spokenLanguages: [
+          { language: "Español", level: "native" },
+          { language: "Inglés", level: "B1" },
+        ],
+        displayLanguage: "en",
+      }),
+    );
+    const model = profileForModel(profile);
+    expect(model.spokenLanguages).toEqual([
+      { language: "Español", level: "native" },
+      { language: "Inglés", level: "B1" },
+    ]);
+    expect(model.displayLanguage).toBe("en");
+    expect(JSON.stringify(model)).not.toContain("data:image");
+    expect(profile.contact.photo).toBe(photo);
+  });
+});
+
+describe("documentos sin los campos nuevos", () => {
+  it("completa idiomas vacíos, sin foto, y el idioma del CV con el del texto", () => {
+    const spanish = parseProfile(emptyProfile({ language: "es" }));
+    expect(spanish.spokenLanguages).toEqual([]);
+    expect(spanish.displayLanguage).toBe("es");
+    expect(spanish.contact.photo).toBeNull();
+
+    const english = parseProfile(emptyProfile({ language: "en-US" }));
+    expect(english.displayLanguage).toBe("en");
+  });
+
+  it("conserva un idioma del CV elegido y rechaza una foto que no es imagen", () => {
+    const profile = parseProfile(emptyProfile({ language: "es", displayLanguage: "en" }));
+    expect(profile.displayLanguage).toBe("en");
+
+    const error = domainFailure(() =>
+      parseProfile(
+        emptyProfile({
+          contact: {
+            name: "Ada",
+            email: null,
+            phone: null,
+            location: null,
+            links: [],
+            photo: "data:image/gif;base64,R0lGODlhAQABAAAAACw=",
+          },
+        }),
+      ),
+    );
+    expect(error.message).toContain("JPEG, PNG o WebP");
+  });
+
+  it("rechaza una foto de más de 1 MiB", () => {
+    const payload = "A".repeat(1_398_104);
+    const error = domainFailure(() =>
+      parseProfile(
+        emptyProfile({
+          contact: {
+            name: "Ada",
+            email: null,
+            phone: null,
+            location: null,
+            links: [],
+            photo: `data:image/png;base64,${payload}`,
+          },
+        }),
+      ),
+    );
+    expect(error.message).toContain("1 MiB");
+  });
+
+  it("rechaza un idioma hablado repetido", () => {
+    const error = domainFailure(() =>
+      parseProfile(
+        emptyProfile({
+          spokenLanguages: [
+            { language: "Inglés", level: "B1" },
+            { language: "inglés", level: "B2" },
+          ],
+        }),
+      ),
+    );
+    expect(error.message).toContain("está repetido");
+  });
 });
 
 describe("createProfileId", () => {

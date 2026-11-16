@@ -8,13 +8,31 @@ export const modelProposalSchema = z.object({
     .array(
       z.object({
         targetType: z
-          .enum(["summary", "bullet", "skill_order"])
-          .describe("summary para el resumen, bullet para un bullet, skill_order para reordenar habilidades."),
+          .enum(["summary", "bullet", "skill_order", "bullet_order"])
+          .describe(
+            "summary para el resumen, bullet para un bullet, skill_order para reordenar habilidades, bullet_order para reordenar los bullets de un empleo o de un proyecto.",
+          ),
         bulletId: z
           .string()
           .nullable()
           .describe("Id exacto del bullet cuando targetType es bullet. Null en los otros casos."),
-        after: z.string().describe("Texto resultante, en el idioma del perfil, sin datos nuevos."),
+        ownerType: z
+          .enum(["experience", "project"])
+          .nullable()
+          .describe(
+            "experience o project cuando targetType es bullet_order. Null en los otros casos.",
+          ),
+        ownerId: z
+          .string()
+          .nullable()
+          .describe(
+            "Id exacto del empleo o del proyecto cuando targetType es bullet_order. Null en los otros casos.",
+          ),
+        after: z
+          .string()
+          .describe(
+            "Texto resultante, en el idioma del perfil, sin datos nuevos. En bullet_order, la lista completa del bloque, un texto por línea.",
+          ),
         reason: z.string().describe("Por qué el cambio acerca el CV a la oferta sin inventar."),
         evidence: z
           .array(
@@ -93,6 +111,12 @@ function normalizeTarget(suggestion: Record<string, unknown>): unknown {
   }
   if (suggestion.targetType === "summary" || suggestion.targetType === "skill_order") {
     return { type: suggestion.targetType };
+  }
+  if (suggestion.targetType === "bullet_order" && suggestion.ownerType === "experience") {
+    return { type: "bullet_order", owner: { type: "experience", experienceId: suggestion.ownerId } };
+  }
+  if (suggestion.targetType === "bullet_order" && suggestion.ownerType === "project") {
+    return { type: "bullet_order", owner: { type: "project", projectId: suggestion.ownerId } };
   }
   return suggestion.target;
 }

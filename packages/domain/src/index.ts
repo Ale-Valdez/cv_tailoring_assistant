@@ -58,6 +58,12 @@ export {
 } from "./job/requirement.ts";
 export { bulletSchema, type Bullet } from "./profile/bullet.ts";
 export { contactLinkSchema, contactSchema, type Contact, type ContactLink } from "./profile/contact.ts";
+export {
+  languageLevelSchema,
+  languageSkillSchema,
+  type LanguageLevel,
+  type LanguageSkill,
+} from "./profile/language-skill.ts";
 export { educationSchema, type Education } from "./profile/education.ts";
 export { experienceSchema, type Experience } from "./profile/experience.ts";
 export {
@@ -86,6 +92,9 @@ export {
   type KeywordCoverage,
 } from "./tailoring/match-profile.ts";
 export {
+  assessBulletOrder,
+  bulletOrderContainer,
+  bulletOrderOwnerSchema,
   evidenceFitsProfile,
   evidenceRefSchema,
   parseSuggestion,
@@ -95,6 +104,7 @@ export {
   suggestionStatusSchema,
   suggestionTargetSchema,
   suggestionValidationSchema,
+  type BulletOrderOwner,
   type EvidenceRef,
   type ReviewDecision,
   type Suggestion,

@@ -42,6 +42,8 @@ export type {
   CitedBullet,
   Contact,
   ContactLink,
+  LanguageLevel,
+  LanguageSkill,
   DateSpan,
   Education,
   Experience,

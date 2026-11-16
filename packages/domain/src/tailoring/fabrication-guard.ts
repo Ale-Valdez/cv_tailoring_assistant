@@ -2,8 +2,12 @@ import type { JobPosting } from "../job/job-posting.ts";
 import { ALIAS_GROUPS } from "../job/keyword-aliases.ts";
 import { containsTerm, dictionaryCanonical, foldTerm } from "../job/normalize-keywords.ts";
 import type { ProfileForModel } from "../profile/profile.ts";
+import { CATEGORY_EQUIVALENCES } from "./category-equivalences.ts";
 import {
+  assessBulletOrder,
+  bulletOrderContainer,
   suggestionFitProblems,
+  type BulletOrderOwner,
   type EvidenceRef,
   type SuggestionTarget,
   type SuggestionValidation,
@@ -264,8 +268,10 @@ export function checkFabrication(
   ];
   if (draft.target.type === "skill_order") {
     reasons.push(...skillOrderReasons(profile, after));
+  } else if (draft.target.type === "bullet_order") {
+    reasons.push(...bulletOrderReasons(profile, draft.target.owner, after));
   } else {
-    reasons.push(...termReasons(profile, job, after));
+    reasons.push(...termReasons(profile, job, after, draft.evidence));
   }
   const unique = [...new Set(reasons)];
   if (unique.length === 0) {
@@ -289,10 +295,43 @@ function citationReasons(profile: ProfileForModel, draft: FabricationDraft): str
       ? []
       : ["La sugerencia del resumen tiene que citar el resumen."];
   }
+  if (target.type === "bullet_order") {
+    return bulletOrderCitationReasons(profile, target.owner, draft.evidence);
+  }
   const citedSkill = draft.evidence.some(
     (evidence) => evidence.type === "skill" && profile.skills.some((skill) => skill.id === evidence.skillId),
   );
   return citedSkill ? [] : ["La sugerencia de orden tiene que citar una habilidad del perfil."];
+}
+
+function bulletOrderCitationReasons(
+  profile: ProfileForModel,
+  owner: BulletOrderOwner,
+  evidence: EvidenceRef[],
+): string[] {
+  const container = bulletOrderContainer(profile, owner);
+  if (container === null) {
+    return [];
+  }
+  const ids = new Set(container.bullets.map((bullet) => bullet.id));
+  const cited = evidence.some((item) => item.type === "bullet" && ids.has(item.bulletId));
+  if (cited) {
+    return [];
+  }
+  return [
+    container.kind === "experience"
+      ? "La sugerencia de orden tiene que citar un bullet de ese empleo."
+      : "La sugerencia de orden tiene que citar un bullet de ese proyecto.",
+  ];
+}
+
+function bulletOrderReasons(profile: ProfileForModel, owner: BulletOrderOwner, after: string): string[] {
+  const container = bulletOrderContainer(profile, owner);
+  if (container === null) {
+    return [];
+  }
+  const place = container.kind === "experience" ? "empleo" : "proyecto";
+  return assessBulletOrder(container.bullets, after, place).reasons;
 }
 
 function skillOrderReasons(profile: ProfileForModel, after: string): string[] {
@@ -329,12 +368,16 @@ function skillOrderReasons(profile: ProfileForModel, after: string): string[] {
   return reasons;
 }
 
-function termReasons(profile: ProfileForModel, job: JobPosting, after: string): string[] {
+function termReasons(profile: ProfileForModel, job: JobPosting, after: string, evidence: EvidenceRef[]): string[] {
+  const category = categoryPhraseSupport(profile, after, evidence);
   const corpus = expandCorpus(profileCorpus(profile), job);
   const triggers = claimTriggers(job);
-  const reasons: string[] = [];
+  const reasons: string[] = [...category.reasons];
   const seen = new Set<string>();
   for (const found of tokenize(after)) {
+    if (category.tokens.has(foldTerm(found.token))) {
+      continue;
+    }
     if (!isClaim(found.token, after, found.index, triggers)) {
       continue;
     }
@@ -349,6 +392,54 @@ function termReasons(profile: ProfileForModel, job: JobPosting, after: string): 
     reasons.push(`El texto introduce «${found.token}», que no está en el perfil.`);
   }
   return reasons;
+}
+
+function categoryPhraseSupport(
+  profile: ProfileForModel,
+  after: string,
+  evidence: readonly EvidenceRef[],
+): { tokens: Set<string>; reasons: string[] } {
+  const cited = citedBulletTexts(profile, evidence);
+  const tokens = new Set<string>();
+  const reasons: string[] = [];
+  for (const row of CATEGORY_EQUIVALENCES) {
+    const used = row.requirementPhrases.filter((phrase) => containsTerm(after, phrase));
+    if (used.length === 0) {
+      continue;
+    }
+    const supported = cited.some((text) => row.evidencePhrases.some((phrase) => containsTerm(text, phrase)));
+    for (const phrase of used) {
+      for (const token of foldTerm(phrase).split(" ")) {
+        if (token.length > 0) {
+          tokens.add(token);
+        }
+      }
+      if (!supported) {
+        reasons.push(`El texto introduce «${phrase}», que no está en el perfil.`);
+      }
+    }
+  }
+  return { tokens, reasons };
+}
+
+function citedBulletTexts(profile: ProfileForModel, evidence: readonly EvidenceRef[]): string[] {
+  const ids = new Set(evidence.flatMap((item) => (item.type === "bullet" ? [item.bulletId] : [])));
+  const texts: string[] = [];
+  for (const experience of profile.experiences) {
+    for (const bullet of experience.bullets) {
+      if (ids.has(bullet.id)) {
+        texts.push(bullet.text);
+      }
+    }
+  }
+  for (const project of profile.projects) {
+    for (const bullet of project.bullets) {
+      if (ids.has(bullet.id)) {
+        texts.push(bullet.text);
+      }
+    }
+  }
+  return texts;
 }
 
 function profileCorpus(profile: ProfileForModel): string {
